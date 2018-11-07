@@ -38,13 +38,13 @@ BroadcastOperations中最通用的方法便是sendEvent方法，该方法遍历c
 AckRequest: 是一个为了实现socketio中客户端emit函数的第三个参数而定义的类。 
 
 ack是一个客户端的一个回调函数，客户端触发的事件如果被服务端收到，服务端可以触发该函数的执行。   
-SocketIOServer的事件监听方法第三个参数便是对应的AckRequest对象，可以使用sendAckData方法设置回调参数。  
-public void onData(final SocketIOClient client, ChatObject data, final AckRequest ackRequest) {
-
-  if (ackRequest.isAckRequested()) { 
-      ackRequest.sendAckData(“client message was delivered to server!”, “yeah!”); 
-  }
-}
+SocketIOServer的事件监听方法第三个参数便是对应的AckRequest对象，可以使用sendAckData方法设置回调参数。    
+public void onData(final SocketIOClient client, ChatObject data, final AckRequest ackRequest) {  
+   
+  if (ackRequest.isAckRequested()) {   
+      ackRequest.sendAckData(“client message was delivered to server!”, “yeah!”);   
+  } 
+} 
 
 AckCallback   
 同样的，既然服务端可以执行客户端的回调函数，那客户端也可以做同样的事情。AckCallback和VoidAckCallback便是netty-socketio模拟的服务端回调函数。  
