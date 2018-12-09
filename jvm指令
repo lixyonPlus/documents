@@ -1,0 +1,438 @@
+加载和存储指令
+
+1、将一个局部变量加载到操作栈：iload、iload_＜n＞、lload、lload_＜n＞、fload、fload_＜n＞、dload、dload_＜n＞、aload、aload_＜n＞。
+2、将一个数值从操作数栈存储到局部变量表：istore、istore_＜n＞、lstore、lstore_＜n＞、fstore、fstore_＜n＞、dstore、dstore_＜n＞、astore、astore_＜n＞。
+3、将一个常量加载到操作数栈：bipush、sipush、ldc、ldc_w、ldc2_w、aconst_null、iconst_m1、iconst_＜i＞、lconst_＜l＞、fconst_＜f＞、dconst_＜d＞。
+4、扩充局部变量表的访问索引的指令：wide。
+
+_＜n＞:_0、_1、_2、_3，
+
+存储数据的操作数栈和局部变量表主要就是由加载和存储指令进行操作，除此之外，还有少量指令，如访问对象的字段或数组元素的指令也会向操作数栈传输数据。
+
+二、const系列
+该系列命令主要负责把简单的数值类型送到栈顶。该系列命令不带参数。注意只把简单的数值类型送到栈顶时，才使用如下的命令。
+比如对应int型才该方式只能把-1,0,1,2,3,4,5（分别采用iconst_m1,iconst_0, iconst_1, iconst_2, iconst_3, iconst_4, iconst_5）
+送到栈顶。对于int型，其他的数值请使用push系列命令（比如bipush）。
+指令码    助记符                            说明
+0x02         iconst_m1                   将int型(-1)推送至栈顶
+0x03         iconst_0                      将int型(0)推送至栈顶
+0x04         iconst_1                      将int型(1)推送至栈顶
+0x05         iconst_2                      将int型(2)推送至栈顶
+0x06         iconst_3                      将int型(3)推送至栈顶
+0x07         iconst_4                      将int型(4)推送至栈顶
+0x08         iconst_5                      将int型(5)推送至栈顶
+0x09         lconst_0                      将long型(0)推送至栈顶
+0x0a         lconst_1                      将long型(1)推送至栈顶
+0x0b         fconst_0                      将float型(0)推送至栈顶
+0x0c         fconst_1                      将float型(1)推送至栈顶
+0x0d         fconst_2                      将float型(2)推送至栈顶
+0x0e         dconst_0                     将double型(0)推送至栈顶
+0x0f          dconst_1                     将double型(1)推送至栈顶
+三、push系列
+该系列命令负责把一个整形数字（长度比较小）送到到栈顶。该系列命令有一个参数，用于指定要送到栈顶的数字。
+注意该系列命令只能操作一定范围内的整形数值，超出该范围的使用将使用ldc命令系列。
+指令码    助记符                            说明
+0x10          bipush    将单字节的常量值(-128~127)推送至栈顶
+0x11           sipush    将一个短整型常量值(-32768~32767)推送至栈顶
+四、ldc系列
+该系列命令负责把数值常量或String常量值从常量池中推送至栈顶。该命令后面需要给一个表示常量在常量池中位置(编号)的参数，
+哪些常量是放在常量池呢？比如：final static int id=32768;final static float double=6.5。
+对于const系列命令和push系列命令操作范围之外的数值类型常量，都放在常量池中.
+另外，所有不是通过new创建的String都是放在常量池中的。
+指令码    助记符                               说明
+0x12            ldc                 将int, float或String型常量值从常量池中推送至栈顶
+0x13          ldc_w               将int, float或String型常量值从常量池中推送至栈顶（宽索引）
+0x14          ldc2_w             将long或double型常量值从常量池中推送至栈顶（宽索引）
+五、load系列
+5.1、load系列A
+该系列命令负责把本地变量的送到栈顶。这里的本地变量不仅可以是数值类型，还可以是引用类型。
+对于前四个本地变量可以采用iload_0,iload_1,iload_2,iload_3(它们分别表示第0,1,2,3个整形变量)这种不到参数的简化命令形式。
+对于第4以上的本地变量将使用iload命令这种形式，在它后面给一参数，以表示是对第几个(从0开始)本类型的本地变量进行操作。
+对本地变量所进行的编号，是对所有类型的本地变量进行的（并不按照类型分类）。
+对于非静态函数，第一变量是this,即其对于的操作是aload_0.
+还有函数传入参数也算本地变量，在进行编号时，它是先于函数体的本地变量的。
+指令码    助记符                                        说明
+0x15          iload                          将指定的int型本地变量推送至栈顶
+0x16          lload                          将指定的long型本地变量推送至栈顶
+0x17          fload                          将指定的float型本地变量推送至栈顶
+0x18          dload                         将指定的double型本地变量推送至栈顶
+0x19          aload                         将指定的引用类型本地变量推送至栈顶
+0x1a          iload_0                      将第一个int型本地变量推送至栈顶
+0x1b          iload_1                      将第二个int型本地变量推送至栈顶
+0x1c          iload_2                      将第三个int型本地变量推送至栈顶
+0x1d          iload_3                      将第四个int型本地变量推送至栈顶
+0x1e          lload_0                      将第一个long型本地变量推送至栈顶
+0x1f           lload_1                      将第二个long型本地变量推送至栈顶
+0x20          lload_2                      将第三个long型本地变量推送至栈顶
+0x21          lload_3                      将第四个long型本地变量推送至栈顶
+0x22          fload_0                     将第一个float型本地变量推送至栈顶
+0x23          fload_1                     将第二个float型本地变量推送至栈顶
+0x24          fload_2                     将第三个float型本地变量推送至栈顶
+0x25          fload_3                     将第四个float型本地变量推送至栈顶
+0x26         dload_0                     将第一个double型本地变量推送至栈顶
+0x27         dload_1                     将第二个double型本地变量推送至栈顶
+0x28         dload_2                     将第三个double型本地变量推送至栈顶
+0x29         dload_3                     将第四个double型本地变量推送至栈顶
+0x2a         aload_0                     将第一个引用类型本地变量推送至栈顶
+0x2b         aload_1                     将第二个引用类型本地变量推送至栈顶
+0x2c         aload_2                     将第三个引用类型本地变量推送至栈顶
+0x2d         aload_3                     将第四个引用类型本地变量推送至栈顶
+5.2、load系列B
+该系列命令负责把数组的某项送到栈顶。该命令根据栈里内容来确定对哪个数组的哪项进行操作。
+比如，如果有成员变量：final String names[]={"robin","hb"};
+那么这句话：String str=names[0];对应的指令为
+   17: aload_0                                                            //将this引用推送至栈顶，即压入栈。
+   18: getfield #5; //Field names:[Ljava/lang/String;//将栈顶的指定的对象的第5个实例域（Field）的值（这个值可能是引用，这里就是引用）压入栈顶
+   21: iconst_0                                                            //数组的索引值（下标）推至栈顶，即压入栈
+   22: aaload                                                              //根据栈里内容来把name数组的第一项的值推至栈顶
+   23: astore 5                                                       //把栈顶的值存到str变量里。因为str在我的程序中是其所在非静态函数的第5个变量(从0开始计数)，
+指令码    助记符                               说明
+0x2e         iaload                     将int型数组指定索引的值推送至栈顶
+0x2f          laload                     将long型数组指定索引的值推送至栈顶
+0x30         faload                     将float型数组指定索引的值推送至栈顶
+0x31        daload                     将double型数组指定索引的值推送至栈顶
+0x32        aaload                     将引用型数组指定索引的值推送至栈顶
+0x33        baload                     将boolean或byte型数组指定索引的值推送至栈顶
+0x34        caload                     将char型数组指定索引的值推送至栈顶
+0x35        saload                     将short型数组指定索引的值推送至栈顶
+六、store系列
+6.1、store系列A
+该系列命令负责把栈顶的值存入本地变量。这里的本地变量不仅可以是数值类型，还可以是引用类型。
+如果是把栈顶的值存入到前四个本地变量的话，采用的是istore_0,istore_1，istore_2，istore_3(它们分别表示第0,1,2,3个本地整形变量)这种不到参数的简化命令形式。如果是把栈顶的值存入到第四个以上本地变量的话，将使用istore命令这种形式，在它后面给一参数，以表示是把栈顶的值存入到第几个(从0开始)本地变量中。
+对本地变量所进行的编号，是对所有类型的本地变量进行的（并不按照类型分类）。
+对于非静态函数，第一变量是this,它是只读的.
+还有函数传入参数也算本地变量，在进行编号时，它是先于函数体的本地变量的。
+指令码    助记符                               说明
+0x36         istore                    将栈顶int型数值存入指定本地变量
+0x37         lstore                    将栈顶long型数值存入指定本地变量
+0x38         fstore                    将栈顶float型数值存入指定本地变量
+0x39         dstore                   将栈顶double型数值存入指定本地变量
+0x3a         astore                   将栈顶引用型数值存入指定本地变量
+0x3b         istore_0                将栈顶int型数值存入第一个本地变量
+0x3c         istore_1                将栈顶int型数值存入第二个本地变量
+0x3d         istore_2                将栈顶int型数值存入第三个本地变量
+0x3e         istore_3                将栈顶int型数值存入第四个本地变量
+0x3f          lstore_0                将栈顶long型数值存入第一个本地变量
+0x40         lstore_1                将栈顶long型数值存入第二个本地变量
+0x41         lstore_2                将栈顶long型数值存入第三个本地变量
+0x42         lstore_3                将栈顶long型数值存入第四个本地变量
+0x43         fstore_0                将栈顶float型数值存入第一个本地变量
+0x44         fstore_1                将栈顶float型数值存入第二个本地变量
+0x45         fstore_2                将栈顶float型数值存入第三个本地变量
+0x46         fstore_3                将栈顶float型数值存入第四个本地变量
+0x47         dstore_0               将栈顶double型数值存入第一个本地变量
+0x48         dstore_1               将栈顶double型数值存入第二个本地变量
+0x49         dstore_2               将栈顶double型数值存入第三个本地变量
+0x4a         dstore_3               将栈顶double型数值存入第四个本地变量
+0x4b         astore_0               将栈顶引用型数值存入第一个本地变量
+0x4c         astore_1               将栈顶引用型数值存入第二个本地变量
+0x4d        astore_2                将栈顶引用型数值存入第三个本地变量
+0x4e        astore_3                将栈顶引用型数值存入第四个本地变量
+6.2、store系列B
+该系列命令负责把栈顶项的值存到数组里。该命令根据栈里内容来确定对哪个数组的哪项进行操作。
+比如，如下代码:
+int moneys[]=new int[5];
+moneys[1]=100;
+其对应的指令为：
+   49: iconst_5
+   50: newarray int
+   52: astore 11
+   54: aload 11
+   56: iconst_1
+   57: bipush 100
+   59: iastore
+   60: lload 6       //因为str在我的程序中是其所非静态在函数的第6个变量(从0开始计数).
+指令码    助记符                                   说明
+0x4f         iastore               将栈顶int型数值存入指定数组的指定索引位置
+0x50        lastore               将栈顶long型数值存入指定数组的指定索引位置
+0x51        fastore               将栈顶float型数值存入指定数组的指定索引位置
+0x52        dastore              将栈顶double型数值存入指定数组的指定索引位置
+0x53        aastore              将栈顶引用型数值存入指定数组的指定索引位置
+0x54        bastore              将栈顶boolean或byte型数值存入指定数组的指定索引位置
+0x55        castore              将栈顶char型数值存入指定数组的指定索引位置
+0x56        sastore              将栈顶short型数值存入指定数组的指定索引位置
+七、pop系列
+该系列命令似乎只是简单对栈顶进行操作，更多详情待补充。
+指令码     助记符                                   说明
+0x57            pop           将栈顶数值弹出 (数值不能是long或double类型的)
+0x58            pop2         将栈顶的一个（long或double类型的)或两个数值弹出（其它）
+0x59            dup           复制栈顶数值(数值不能是long或double类型的)并将复制值压入栈顶
+0x5a            dup_x1     复制栈顶数值(数值不能是long或double类型的)并将两个复制值压入栈顶
+0x5b            dup_x2     复制栈顶数值(数值不能是long或double类型的)并将三个（或两个）复制值压入栈顶
+0x5c            dup2         复制栈顶一个（long或double类型的)或两个（其它）数值并将复制值压入栈顶
+0x5d            dup2_x1    复制栈顶数值(long或double类型的)并将两个复制值压入栈顶
+0x5e            dup2_x2     复制栈顶数值(long或double类型的)并将三个（或两个）复制值压入栈顶
+八、栈顶元素数学操作及移位操作系列
+该系列命令用于对栈顶元素行数学操作，和对数值进行移位操作。移位操作的操作数和要移位的数都是从栈里取得。
+比如对于代码：int k=100;k=k>>1;其对应的JVM指令为：
+   60: bipush 100
+   62: istore 12//因为k在我的程序中是其所在非静态函数的第12个变量(从0开始计数).
+   64: iload 12
+   66: iconst_1
+   67: ishr
+   68: istore 12
+指令码     助记符                                        说明
+0x5f             swap               将栈最顶端的两个数值互换(数值不能是long或double类型的)
+0x60            iadd                将栈顶两int型数值相加并将结果压入栈顶
+0x61            ladd                将栈顶两long型数值相加并将结果压入栈顶
+0x62            fadd               将栈顶两float型数值相加并将结果压入栈顶
+0x63            dadd              将栈顶两double型数值相加并将结果压入栈顶
+0x64            isub               将栈顶两int型数值相减并将结果压入栈顶
+0x65            lsub              将栈顶两long型数值相减并将结果压入栈顶
+0x66            fsub              将栈顶两float型数值相减并将结果压入栈顶
+0x67            dsub             将栈顶两double型数值相减并将结果压入栈顶
+0x68            imul              将栈顶两int型数值相乘并将结果压入栈顶
+0x69            lmul              将栈顶两long型数值相乘并将结果压入栈顶
+0x6a            fmul              将栈顶两float型数值相乘并将结果压入栈顶
+0x6b            dmul             将栈顶两double型数值相乘并将结果压入栈顶
+0x6c            idiv               将栈顶两int型数值相除并将结果压入栈顶
+0x6d            ldiv               将栈顶两long型数值相除并将结果压入栈顶
+0x6e            fdiv               将栈顶两float型数值相除并将结果压入栈顶
+0x6f            ddiv               将栈顶两double型数值相除并将结果压入栈顶
+0x70           irem               将栈顶两int型数值作取模运算并将结果压入栈顶
+0x71           lrem               将栈顶两long型数值作取模运算并将结果压入栈顶
+0x72           frem               将栈顶两float型数值作取模运算并将结果压入栈顶
+0x73           drem              将栈顶两double型数值作取模运算并将结果压入栈顶
+0x74            ineg              将栈顶int型数值取负并将结果压入栈顶
+0x75            lneg              将栈顶long型数值取负并将结果压入栈顶
+0x76           fneg              将栈顶float型数值取负并将结果压入栈顶
+0x77           dneg             将栈顶double型数值取负并将结果压入栈顶
+0x78            ishl               将int型数值左移位指定位数并将结果压入栈顶
+0x79            lshl               将long型数值左移位指定位数并将结果压入栈顶
+0x7a            ishr               将int型数值右（符号）移位指定位数并将结果压入栈顶
+0x7b            lshr               将long型数值右（符号）移位指定位数并将结果压入栈顶
+0x7c            iushr             将int型数值右（无符号）移位指定位数并将结果压入栈顶
+0x7d           lushr              将long型数值右（无符号）移位指定位数并将结果压入栈顶
+0x7e           iand               将栈顶两int型数值作“按位与”并将结果压入栈顶
+0x7f            land               将栈顶两long型数值作“按位与”并将结果压入栈顶
+0x80            ior                 将栈顶两int型数值作“按位或”并将结果压入栈顶
+0x81            lor                 将栈顶两long型数值作“按位或”并将结果压入栈顶
+0x82            ixor               将栈顶两int型数值作“按位异或”并将结果压入栈顶
+0x83            lxor               将栈顶两long型数值作“按位异或”并将结果压入栈顶
+ 
+
+ 
+
+运算指令
+
+1、运算或算术指令用于对两个操作数栈上的值进行某种特定运算，并把结果重新存入到操作栈顶。
+
+2、算术指令分为两种：整型运算的指令和浮点型运算的指令。
+
+3、无论是哪种算术指令，都使用Java虚拟机的数据类型，由于没有直接支持byte、short、char和boolean类型的算术指令，使用操作int类型的指令代替。
+
+加法指令：iadd、ladd、fadd、dadd。
+减法指令：isub、lsub、fsub、dsub。
+乘法指令：imul、lmul、fmul、dmul。
+除法指令：idiv、ldiv、fdiv、ddiv。
+求余指令：irem、lrem、frem、drem。
+取反指令：ineg、lneg、fneg、dneg。
+位移指令：ishl、ishr、iushr、lshl、lshr、lushr。
+按位或指令：ior、lor。
+按位与指令：iand、land。
+按位异或指令：ixor、lxor。
+局部变量自增指令：iinc。
+比较指令：dcmpg、dcmpl、fcmpg、fcmpl、lcmp。
+
+类型转换指令
+
+1、类型转换指令可以将两种不同的数值类型进行相互转换。
+
+2、这些转换操作一般用于实现用户代码中的显式类型转换操作，或者用来处理字节码指令集中数据类型相关指令无法与数据类型一一对应的问题。
+
+宽化类型转换
+
+int类型到long、float或者double类型。
+long类型到float、double类型。
+float类型到double类型。
+
+i2l、f2b、l2f、l2d、f2d。
+
+窄化类型转换
+
+i2b、i2c、i2s、l2i、f2i、f2l、d2i、d2l和d2f。
+
+对象创建与访问指令
+
+创建类实例的指令：new。
+创建数组的指令：newarray、anewarray、multianewarray。
+访问类字段（static字段，或者称为类变量）和实例字段（非static字段，或者称为实例变量）的指令：getfield、putfield、getstatic、putstatic。
+把一个数组元素加载到操作数栈的指令：baload、caload、saload、iaload、laload、faload、daload、aaload。
+将一个操作数栈的值存储到数组元素中的指令：bastore、castore、sastore、iastore、fastore、dastore、aastore。
+取数组长度的指令：arraylength。
+检查类实例类型的指令：instanceof、checkcast。
+
+操作数栈管理指令
+
+直接操作操作数栈的指令：
+
+将操作数栈的栈顶一个或两个元素出栈：pop、pop2。
+复制栈顶一个或两个数值并将复制值或双份的复制值重新压入栈顶：dup、dup2、dup_x1、dup2_x1、dup_x2、dup2_x2。
+将栈最顶端的两个数值互换：swap。
+
+控制转移指令
+
+1、控制转移指令可以让Java虚拟机有条件或无条件地从指定的位置指令而不是控制转移指令的下一条指令继续执行程序。
+
+2、从概念模型上理解，可以认为控制转移指令就是在有条件或无条件地修改PC寄存器的值。
+
+条件分支：ifeq、iflt、ifle、ifne、ifgt、ifge、ifnull、ifnonnull、if_icmpeq、if_icmpne、if_icmplt、if_icmpgt、if_icmple、if_icmpge、if_acmpeq和if_acmpne。
+复合条件分支：tableswitch、lookupswitch。
+无条件分支：goto、goto_w、jsr、jsr_w、ret。
+
+在Java虚拟机中有专门的指令集用来处理int和reference类型的条件分支比较操作，为了可以无须明显标识一个实体值是否null，也有专门的指令用来检测null值。
+
+方法调用和返回指令
+
+invokevirtual 指令用于调用对象的实例方法，根据对象的实际类型进行分派（虚方法分派），这也是Java语言中最常见的方法分派方式。
+invokeinterface 指令用于调用接口方法，它会在运行时搜索一个实现了这个接口方法的对象，找出适合的方法进行调用。
+invokespecial 指令用于调用一些需要特殊处理的实例方法，包括实例初始化（＜init＞）方法、私有方法和父类方法。
+invokestatic  调用静态方法（static方法）。
+invokedynamic 指令用于在运行时动态解析出调用点限定符所引用的方法，并执行该方法，前面4条调用指令的分派逻辑都固化在Java虚拟机内部，而invokedynamic指令的分派逻辑是由用户所设定的引导方法决定的。
+
+方法调用指令与数据类型无关，而方法返回指令是根据返回值的类型区分的，包括ireturn（当返回值是boolean、byte、char、short和int类型时使用）、lreturn、freturn、dreturn和areturn，另外还有一条return指令供声明为void的方法、实例初始化方法以及类和接口的类初始化方法使用。
+
+关于方法调用
+
+1、Class文件的编译过程中不包含传统编译中的连接步骤，所有方法调用中的目标方法在Class文件里面都是一个常量池中的符号引用，而不是方法在实际运行时内存布局中的入口地址。
+
+2、在类加载的解析阶段，会将其中的一部分符号引用转化为直接引用，这类方法（编译期可知，运行期不可变）的调用称为解析（Resolution）。
+
+主要包括静态方法和私有方法两大类，前者与类型直接关联，后者在外部不可被访问，这两种方法各自的特点决定了它们都不可能通过继承或别的方式重写其他版本，因此它们都适合在类加载阶段进行解析。
+
+3、只要能被invokestatic和invokespecial指令调用的方法，都可以在解析阶段中确定唯一的调用版本，符合这个条件的有静态方法、私有方法、实例构造器、父类方法4类，它们在类加载的时候就会把符号引用解析为该方法的直接引用。
+
+关于分派调用
+
+1、静态分派 - 方法重载
+
+```
+     /*方法静态分派演示
+     */
+    public class StaticDispatch{
+        static abstract class Human{
+        }
+        static class Man extends Human{
+        }
+        static class Woman extends Human{
+        }
+        public void sayHello(Human guy){
+        System.out.println("hello,guy！");
+        }
+        public void sayHello(Man guy){
+        System.out.println("hello,gentleman！");
+        }
+        public void sayHello(Woman guy){
+        System.out.println("hello,lady！");
+        }
+        public static void main(String[]args){
+            Human man=new Man();
+            Human woman=new Woman();
+            StaticDispatch sr=new StaticDispatch();
+            sr.sayHello(man);
+            sr.sayHello(woman);
+        }
+    }
+ 
+```  
+两次输出都是 hello,guy！
+
+2、动态分派 - 方法重写
+
+复制代码
+public class DynamicDispatch{
+    static abstract class Human{
+        protected abstract void sayHello();
+    }
+    
+    static class Man extends Human{
+        @Override
+        protected void sayHello(){
+            System.out.println("man say hello");
+        }
+    }
+    static class Woman extends Human{
+        @Override
+        protected void sayHello(){
+            System.out.println("woman say hello");
+        }
+    }
+    public static void main(String[]args){
+        Human man=new Man();
+        Human woman=new Woman();
+        man.sayHello();
+        woman.sayHello();
+        man=new Woman();
+        man.sayHello();
+    }
+}
+复制代码
+man say hello
+woman say hello
+woman say hello
+
+3、单分配、多分配
+
+```
+/**
+*单分派、多分派演示
+*/
+public class Dispatch{
+    static class QQ{}
+    static class _360{}
+    
+    public static class Father{
+        public void hardChoice(QQ arg){
+            System.out.println("father choose qq");
+        }
+        public void hardChoice(_360 arg){
+            System.out.println("father choose 360");
+        }
+    }
+    
+    public static class Son extends Father{
+        public void hardChoice(QQ arg){
+            System.out.println("son choose qq");
+        }
+        public void hardChoice(_360 arg){
+            System.out.println("son choose 360");
+        }
+    }
+    
+    public static void main(String[]args){
+        Father father=new Father();
+        Father son=new Son();
+        father.hardChoice(new _360());
+        son.hardChoice(new QQ());
+    }
+}
+```
+father choose 360
+son choose qq
+
+4、动态语言支持
+
+动态类型语言的关键特征是它的类型检查的主体过程是在运行期而不是编译期。
+
+ 
+
+异常处理指令
+
+在Java程序中显式抛出异常的操作（throw语句）都由athrow指令来实现，除了用throw语句显式抛出异常情况之外，Java虚拟机规范还规定了许多运行时异常会在其他Java虚拟机指令检测到异常状况时自动抛出。
+
+例如，在整数运算中，当除数为零时，虚拟机会在idiv或ldiv指令中抛出ArithmeticException异常。
+
+而在Java虚拟机中，处理异常（catch语句）不是由字节码指令来实现的（很久之前曾经使用jsr和ret指令来实现，现在已经不用了），而是采用异常表来完成的。
+
+同步指令
+
+Java虚拟机可以支持方法级的同步和方法内部一段指令序列的同步，这两种同步结构都是使用管程（Monitor）来支持的。
+
+方法级同步
+
+方法级的同步是隐式的，即无须通过字节码指令来控制
+
+它实现在方法调用和返回操作之中。虚拟机可以从方法常量池的方法表结构中的ACC_SYNCHRONIZED访问标志得知一个方法是否声明为同步方法。当方法调用时，调用指令将会检查方法的ACC_SYNCHRONIZED访问标志是否被设置，如果设置了，执行线程就要求先成功持有管程，然后才能执行方法，最后当方法完成（无论是正常完成还是非正常完成）时释放管程。在方法执行期间，执行线程持有了管程，其他任何线程都无法再获取到同一个管程。如果一个同步方法执行期间抛出了异常，并且在方法内部无法处理此异常，那么这个同步方法所持有的管程将在异常抛到同步方法之外时自动释放。
+
+方法内部一段指令序列的同步
+同步一段指令集序列通常是由Java语言中的synchronized语句块来表示的，Java虚拟机的指令集中有monitorenter和monitorexit两条指令来支持synchronized关键字的语义，正确实现synchronized关键字需要Javac编译器与Java虚拟机两者共同协作支持。
