@@ -1,6 +1,6 @@
 # nginx配置socketio转发
 ```
-location / {        
+location /socket.io {        
         # 此处改为 socket.io 后端的 ip 和端口即可
         proxy_pass http://10.50.50.246:9096;
 
