@@ -1,0 +1,54 @@
+
+version: '2.2'
+
+services:
+  delos:
+    container_name: rap2-delos
+    image: blackdog1987/rap2-delos:2.6.67cc4db
+    environment:
+      - MYSQL_URL=rap2-mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USERNAME=root
+      - MYSQL_PASSWD=root
+      - MYSQL_SCHEMA=rap2
+
+      # redis config
+      - REDIS_URL=rap2-redis
+      - REDIS_PORT=6379
+
+      # production / development
+      - NODE_ENV=production
+    working_dir: /app
+    privileged: true
+    command: node dispatch.js
+    links:
+      - redis
+      - mysql
+    depends_on:
+      - redis
+      - mysql
+    ports:
+      - "38080:8080"  # expose 38080
+
+  redis:
+    container_name: rap2-redis
+    image: redis:latest
+
+  # disable this if you have your own mysql
+  mysql:
+    container_name: rap2-mysql
+    image: mysql:5.7
+    # expose 33306 to client (navicat)
+    #ports:
+    #   - 33306:3306
+    volumes:
+      # change it to your own path
+      # WARNING: without this line, your data will be lost.
+      # - "./mysql:/var/lib/mysql"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      MYSQL_DATABASE: "rap2"
+      MYSQL_USER: "root"
+      MYSQL_PASSWORD: "root"
+
+
