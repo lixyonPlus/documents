@@ -1,9 +1,9 @@
 ### 集群拓扑结构
 > master:  
 kube-apiserver kube-controller-manager kube-scheduler  kube-proxy pause etcd coredns  flannel  
-> node1:
-kube-proxy  pause flannel 
-> node2:
+> node1:  
+kube-proxy  pause flannel   
+> node2:  
 kube-proxy  pause flannel 
 
 # 1. 安装 Kubeadm  
