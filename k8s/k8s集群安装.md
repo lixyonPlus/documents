@@ -6,7 +6,7 @@ kube-proxy  pause flannel
 > node2:  
 kube-proxy  pause flannel 
 
-# 1. 安装 Kubeadm  
+# 1. 安装 Kubeadm  (master、node1、node2)
 1.1. 安装 Kubeadm 首先我们要配置好阿里云的国内源，执行如下命令：  
 ```
 cat <<EOF > /etc/yum.repos.d/kubernetes.repo
@@ -218,19 +218,12 @@ echo "export KUBECONFIG=/etc/kubernetes/admin.conf" >> ~/.bash_profile
 ```
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
-
-```
-systemctl start kubelet
-systemctl enable kubelet
-systemctl status kubelet
-```
 ---  
 
 ### node节点：
 1.4. 配置 Kubeadm 所用到的镜像
 > 这里是重中之重，因为在国内的原因，无法访问到 Google 的镜像库，所以我们需要执行以下脚本来从 Docker Hub 仓库中获取相同的镜像，并且更改 TAG 让其变成与 Google 拉去镜像一致。  
-
-1.4.1. 新建一个 Shell 脚本，填入以下代码之后保存。
+新建一个 Shell 脚本，填入以下代码之后保存。
 ```
 #!/bin/bash
 images=(kube-proxy-amd64:v1.11.0 pause:3.1)
@@ -240,12 +233,12 @@ docker tag keveon/$imageName k8s.gcr.io/$imageName
 docker rmi keveon/$imageName
 done
 ```
-1.4.2. 执行脚本  
+执行脚本  
 ```
 chmod -R 777 ./xxx.sh 
 ./xxx.sh
 ```
-1.4.3 在node1/node2上复制 kubectl 认证信息
+1.4.1. 在node1/node2上复制 kubectl 认证信息
 ```
 scp /etc/kubernetes/admin.conf node1:/etc/kubernetes/admin.conf
 scp /etc/kubernetes/admin.conf node2:/etc/kubernetes/admin.conf
@@ -254,21 +247,13 @@ export KUBECONFIG=/etc/kubernetes/admin.conf
 # 如果你想持久化的话，直接执行以下命令【推荐】
 echo "export KUBECONFIG=/etc/kubernetes/admin.conf" >> ~/.bash_profile
 ```
- 1.4.4. 在node1/node2上执行刚刚master输出的：
+ 1.4.2. 在node1/node2上执行刚刚master输出的：
  ```
 kubeadm join 172.16.8.62:6443 --token o337m9.ceq32wg9g2gro7gx --discovery-token-ca-cert-hash sha256:e8adc6dc2bbe6bd18569c73e4c0468b4652655e7c5c97209a9ec214beac55ea3 --ignore-preflight-errors=Swap
  ```
- 1.4.5. 在node1/node2上安装 Flannel 网络
+ 1.4.3. 在node1/node2上安装 Flannel 网络
 ```
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-```
-```
-
-```
-systemctl start kubelet
-systemctl enable kubelet
-systemctl status kubelet
-```
 ```
 
 ### 在master服务器，执行以下命令：
