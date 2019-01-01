@@ -29,6 +29,21 @@ yum -y install kubelet kubeadm kubectl
 #设置开机启动
 systemctl enable kubelet && systemctl start kubelet
 ```
+查看kubeadm配置文件：
+```
+rpm -ql kubelet
+/etc/kubernetes/manifests
+/etc/sysconfig/kubelet
+/etc/systemd/system/kubelet.service
+/usr/bin/kubelet
+# 查看kubelet配置
+cat /etc/sysconfig/kubelet
+KUBELET_EXTRA_ARGS=
+# 修改kubelet配置
+vim /etc/sysconfig/kubelet
+KUBELET_EXTRA_ARGS="--fail-swap-on=false"
+```
+
 ### master节点：
 1.4. 配置 Kubeadm 所用到的镜像  
 > 这里是重中之重，因为在国内的原因，无法访问到 Google 的镜像库，所以我们需要执行以下脚本来从 Docker Hub 仓库中获取相同的镜像，并且更改 TAG 让其变成与 Google 拉去镜像一致。    
@@ -203,6 +218,12 @@ echo "export KUBECONFIG=/etc/kubernetes/admin.conf" >> ~/.bash_profile
 ```
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
+
+```
+systemctl start kubelet
+systemctl enable kubelet
+systemctl status kubelet
+```
 ---  
 
 ### node节点：
@@ -241,6 +262,15 @@ kubeadm join 172.16.8.62:6443 --token o337m9.ceq32wg9g2gro7gx --discovery-token-
 ```
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
+```
+
+```
+systemctl start kubelet
+systemctl enable kubelet
+systemctl status kubelet
+```
+```
+
 ### 在master服务器，执行以下命令：
 ```
 $ kubectl get nodes
