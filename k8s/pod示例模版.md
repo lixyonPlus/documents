@@ -17,27 +17,27 @@ spec:
     imagePullPolicy: #镜像拉取策略 [Always不管镜像是否存在都会进行一次拉取。|Never不管镜像是否存在都不会进行拉取.|默认IfNotPresent只有镜像不存在时，才会进行镜像拉取。]
     command: [string] #执行命令，相当于docker中entrypoint
     args: [string] #执行命令，相当于docker中cmd
-    workingDir: string #工作目录
-    volumeMounts: #虚拟卷挂在
+    workingDir: string #容器的工作目录
+    volumeMounts: #挂载到容器内部的存储卷配置
     - name: string #名称
       mountPath: string #挂载路径
       readOnly: boolean #是否只读
     ports:
     - name: string # 端口名称
-      containerPort: init #容器端口
-      hostPort: in  #
-      protocol: string #协议
-    env: #环境变量
-    - name: string 
-      value: string
-    resources: #资源限制
-      requests: #设置容器需要的最小资源
-        memory: string
-        cpu: string
+      containerPort: init # 容器端口
+      hostPort: in  # 容器所在主机需要监听的端口号，默认与Container相同
+      protocol: string #端口协议，支持TCP和UDP，默认TCP
+    env: # 容器运行前设置的环境变量列表
+    - name: string # 环境变量名称
+      value: string # 环境变量的值
+    resources: # 资源限制和请求的设置
+      requests: # 设置容器需要的最小资源
+        memory: string #内存请求，容器启动的初始可用数量 
+        cpu: string #Cpu请求，容器启动的初始可用数量
       limits: #用于限制运行时容器占用的资源，用来限制容器的最大CPU、内存的使用率。当容器申请内存超过limits时会被终止，并根据重启策略进行重启
-        cpu: string 
-        memory: string
-    livenessProbe: #存活探针
+        cpu: string #Cpu的限制，单位为core数
+        memory: string #内存限制，单位可以为Mib/Gib
+    livenessProbe: #对Pod内容器健康检查的设置，当探测无响应几次后将自动重启该容器
       exec: #通过执行命令来检查服务是否正常，针对复杂检测或无HTTP接口的服务，命令返回值为0则表示容器健康。
         command: [string]
       httpGet: #通过发送http请求检查服务是否正常，返回200-399状态码则表明容器健康。
