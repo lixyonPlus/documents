@@ -125,7 +125,7 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 ```
 
 # 3. 初始化kubeadm
-> 前面是版本号，后面是你 POD 网络的 IP 段。
+> 前面是版本号，后面是你 POD 网络的 IP 段。(如果使用flannel必须设置 --pod-network-cidr)
 ```
 kubeadm init --kubernetes-version=v1.11.0 --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=Swap
 ```
