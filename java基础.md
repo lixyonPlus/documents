@@ -1,0 +1,7 @@
+1.Servlet是不是线程安全的。
+  Servlet不是线程安全的。当Tomcat接收到Client的HTTP请求时，Tomcat从线程池中取出一个线程，之后找到该请求对应的Servlet对象并进行初始化，之后调用service()方法。要注意的是每一个Servlet对象再Tomcat容器中只有一个实例对象，即是单例模式。如果多个HTTP请求请求的是同一个Servlet，那么着两个HTTP请求对应的线程将并发调用Servlet的service()方法。
+
+2.为什么需要重写equals和hashCode方法？
+  不重写equals和hashCode方法的话是不依赖于对象属性的变化的，也就是说这里使用默认的hashCode方法可以取到值。但是我们重写equal方法的初衷是判定对象属性都相等的对象是相等的，而不是说同一个对象的引用才相等。
+  如果只重写了equals方法而没有重写hashCode方法的话，则会违反约定的第二条：相等的对象必须具有相等的散列码（hashCode）。
+  同时对于HashSet和HashMap这些基于散列值（hash）实现的类。HashMap的底层处理机制是以数组的方法保存放入的数据的(Node<K,V>[] table)，其中的关键是数组下标的处理。数组的下标是根据传入的元素hashCode方法的返回值再和特定的值异或决定的。所以如果不重写hashCode的话，可能导致HashSet、HashMap不能正常的运作。
