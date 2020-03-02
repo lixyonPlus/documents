@@ -50,3 +50,7 @@ zookeeper：
 　　11. Leader根据follower的zxid确定同步点
 　　12 完成同步后通知follower 已经成为uptodate状态
 　　13. Follower收到uptodate消息后，又可以重新接受client的请求进行服务了
+
+
+zookeeper脑裂的问题？
+选举大于半数以上（奇数个节点），所以不会发生脑裂问题。
