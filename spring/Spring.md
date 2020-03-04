@@ -28,6 +28,8 @@ AOP 是基于动态代理模式实现的，具体实现上可以基于 JDK 动�
 4. 将生成的 bean 的代理对象返回给 BeanFactory 容器，到此，AOP 逻辑执行结束
 
 
+AbstractAutoProxyCreator:spring代理对象顶级抽象类
+
 所谓 IOC ，就是由 Spring IOC 容器来负责对象的生命周期和对象之间的关系
 
 spring bean生命周期：
