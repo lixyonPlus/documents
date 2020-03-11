@@ -24,8 +24,11 @@ RabbitMQ 最初起源于金融系统，用于在分布式系统中存储转发�
 
 如果有两个消费端用了不同的Queue，但使用相同的RoutingKey去绑定Direct交换机的话，分发的行为是复制的，也就是说每个程序都会收到这个消息的副本。行为相当于Fanout交换机。
 
-rabbitmq无法解决重复消费问题，可以根据本地消息表保存唯一messageID或zookeeper去重。
-rabbitmq：通过为用户指定Vhost（虚拟主机）提高资源利用率和命名冲突（队列、交换机）问题。
+rabbitmq无法解决重复消费问题（幂等性），可以根据本地消息表保存唯一messageID或zookeeper去重。
+rabbitmq通过为用户指定Vhost（虚拟主机）提高资源利用率和命名冲突（队列、交换机）问题。
+rabbitmq把需要顺序消费的消息发送到一个指定的队列，单个消费者消费，可以保证顺序消费。（主动去分配队列，单个消费者。）
+
+
 
 概念说明: 
   Broker:它提供一种传输服务,它的角色就是维护一条从生产者到消费者的路线，保证数据能按照指定的方式进行传输。
@@ -88,3 +91,9 @@ spring.rabbitmq.listener.direct.acknowledge-mode=MANUAL
           channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
     }
   ```
+
+
+
+
+  集群： 
+    rabbitmq镜像模式集群：keepalived，ha-proxy，rabbitmq，rabbitmq管理端配置
