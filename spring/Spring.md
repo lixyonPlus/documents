@@ -15,17 +15,39 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 BeanFactory是个 Factory ，也就是 IOC 容器或对象工厂， FactoryBean 是个 Bean 。在 Spring 中，所有的Bean 都是由 BeanFactory( 也就是 IOC 容器 ) 来进行管理的。但对 FactoryBean 而言，这个 Bean 不是简单的 Bean，而是一个能生产或者修饰对象生成的工厂 Bean, 它的实现与设计模式中的工厂模式和修饰器模式类似。
 
 
+BeanFactory是一个最顶层的接口，他定义了IOC容器的基本功能规范，他有三个子类：ListableBeanFactory、HierarchicalBeanFactory、AutowireCapableBeanFactory但是最终的默认实现类是DefaultListableBeanFactory它实现了所有接口。ListableBeanFactory表示Bean是可列表的，HierarchicalBeanFactory表示bean是有继承关系的，AutowireCapableBeanFactory表示bean自动装配规则，他们共同定义了bean的集合，bean之间的关系和bean的行为。
+XMlBeanFactory就是对DefaultListableBeanFactory的实现，这个IOC容器可以读取XML配置BeanDefinition（就是xml配置文件中对bean的配置）。
+ApplicationContext不仅继承了容器的基本实现，还支持一些高级功能，比如：国际化、访问资源、时间机制。
+Bean的定义在spring中是通过BeanDefinition来描述的。
+
+
+IOC容器初始化过程：
+  初始化包括Beandefinition的Resource定位、载入、注册三个基本的过程。
+
+
   ①BeanFactroy采用的是延迟加载形式来注入Bean的，即只有在使用到某个Bean时(调用getBean())，才对该Bean进行加载实例化。这样，我们就不能发现一些存在的Spring的配置问题。如果Bean的某一个属性没有注入，BeanFacotry加载后，直至第一次使用调用getBean方法才会抛出异常。
   ②ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。 ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
 
+IOC容器什么时候依赖注入？
+  1.第一次getBean()的时候，触发依赖注入。
+  2.在<bean>资源中定义lazy-init时，即让bean在解析注册bean时预实例化触发依赖注入。
+
+创建bean：AbstractAutowireCapableBeanFactory实现了ObjectFactory接口，创建容器指定的bean实例，同时还对创建的对象进行初始化。
+BeanWrapperImpl处理依赖注入
 
 
 
-AOP 是基于动态代理模式实现的，具体实现上可以基于 JDK 动态代理或者 Cglib 动态代理。其中 JDK 动态代理只能代理实现了接口的对象，而 Cglib 动态代理则无此限制。所以在为没有实现接口的对象生成代理时，只能使用 Cglib。
+AOP 是基于动态代理模式实现的，具体实现上可以基于JDK动态代理或者Cglib动态代理。其中 JDK 动态代理只能代理实现了接口的对象，而 Cglib 动态代理则无此限制。所以在为没有实现接口的对象生成代理时，只能使用 Cglib。
+ - 切面、切入点、连接点、通知、目标对象、aop代理
+ - 通知：前置通知、后置通知、返回后通知、环绕通知、抛出异常后通知
+
 1. AOP 逻辑介入 BeanFactory 实例化 bean 的过程
 2. 根据 Pointcut 定义的匹配规则，判断当前正在实例化的 bean 是否符合规则
 3. 如果符合，代理生成器将切面逻辑 Advice 织入 bean 相关方法中，并为目标 bean 生成代理对象
 4. 将生成的 bean 的代理对象返回给 BeanFactory 容器，到此，AOP 逻辑执行结束
+
+springmvc优化点：每次发起请求时，springmvc没有对请求地址进行缓存。
+
 
 
 AbstractAutoProxyCreator:spring代理对象顶级抽象类
