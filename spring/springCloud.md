@@ -283,5 +283,5 @@ Feign的整体工作流程
   根据FeignClientFactoryBean的getObject()方法得到不同动态代理的类。
   根据不同的代理执行不同的invoke()方法。  
 
-  ![feign](../image/feign.png)
+  ![feign](../image/feign.jpg)
 
