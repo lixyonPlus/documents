@@ -7,7 +7,7 @@ springCloud:
         1.当使用 Spring Cloud Config Server的时候，你应该在 bootstrap.yml里面指定 spring.application.name和 spring.cloud.config.server.git.uri
         2.一些加密/解密的信息
 
-  ribbon：
+  ribbon：客户端负载均衡（软负载均衡）
     调用链路选择服务器逻辑
       LoadBalancerClient（RibbonLoadBalancerClient） -> ILoadBalancer（ZoneAwareLoadBalancer） -> IRule (ZoneAvoidanceRule)
       LoadBalancerClient:
@@ -36,7 +36,6 @@ springCloud:
         获取更新服务器列表
         默认实现：ConfigurationBasedServerList或DiscoveryEnabledNIWSServerList
 
-
     负载均衡器：
       ILoadBalancer
         BaseLoadBalancer
@@ -61,6 +60,17 @@ springCloud:
         PingUrl
         NIWSDiscoveryPing
 
+    轮询算法：第几次请求 % 集群中该服务实例总数 = 实际调用服务实例下标，每次重启按1计算。
+
+    使用RestTemplate访问微服务需要加入
+
+    ```java
+      @LoadBalance
+      @Bean
+      public RestTemplate restTemplate(){
+        return new RestTemplate();
+      }
+    ```
 
   Hystrix：
     初始化顺序： @EnableCiruitBreaker -> EnableCircuitBreakerImportSelector -> HystrixCircuitBreakerConfiguration
@@ -79,6 +89,7 @@ springCloud:
         EnableCircuitBreakerImportSelector、EnableDiscoveryClientImportSelector
 
     1.使用@EnableHystrix 实现服务提供方短路
+    ```java
       @HystrixCommand(
            //Command 配置
             commandProperties = { 
@@ -111,8 +122,10 @@ springCloud:
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
+    ```
 
   3.增加编程方式的短路实现
+  ```java
     public class UserRibbonClientHystrixCommand extends HystrixCommand<Collection> {
 
     private final String providerServiceName;
@@ -146,7 +159,8 @@ springCloud:
     protected Collection getFallback() {
         return Collections.emptyList();
     }
-}
+  }
+```
   当一个服务调用另一个服务由于网络原因或自身原因出现问题，调用者就会等待被调用者的响应 当更多的服务请求到这些资源导致更多的请求等待，发生连锁效应（雪崩效应）
   断路器有完全打开状态:一段时间内 达到一定的次数无法调用 并且多次监测没有恢复的迹象 断路器完全打开 那么下次请求就不会请求到该服务
   半开:短时间内 有恢复迹象 断路器会将部分请求发给该服务，正常调用时 断路器关闭
@@ -205,14 +219,15 @@ springCloud:
     静态资源处理 直接在边界返回某些响应。
 
   路由配置：
+  ```txt
     zuul:
       routes:
         route-name: #路由别名，无其他意义，与例1效果一致
           service-id: rest-demo
           path: /rest/**
+    ```
 
-
-    eureka-server:
+  eureka-server:
      1. 错误：  Instances currently registered with Eureka
       解决问题：
         ## Spring Cloud Eureka 服务器作为注册中心，通常情况下，不需要再注册到其他注册中心去，同时，它也不需要获取客户端信息
@@ -224,7 +239,11 @@ springCloud:
         eureka.instance.hostname = localhost
         eureka.client.serviceUrl.defaultZone = http://${eureka.instance.hostname}:${server.port}/eureka
     1. @EnableDiscoveryClient与@EnableEurekaClient区别
-      注解@EnableEurekaClient上有@EnableDiscoveryClient注解，可以说基本就是@EnableEurekaClient有@EnableDiscoveryClient的功能，其实@EnableEurekaClientz注解就是一种方便使用eureka的注解而已，可以说使用其他的注册中心后，都可以使用@EnableDiscoveryClient注解，但是使用@EnableEurekaClient的情景，就是在服务采用eureka作为注册中心的时候，使用场景较为单一。
+      注解@EnableEurekaClient上有@EnableDiscoveryClient注解，可以说基本就是@EnableEurekaClient有@EnableDiscoveryClient的功能，其实@EnableEurekaClient注解就是一种方便使用eureka的注解而已，可以说使用其他的注册中心后，都可以使用@EnableDiscoveryClient注解，但是使用@EnableEurekaClient的情景，就是在服务采用eureka作为注册中心的时候，使用场景较为单一。
+
+    DiscoveryClient:获取eureka注册所有实例信息
+    zookeeper做服务注册中心时，注册为临时节点，服务下线直接剔除。
+
 
     服务注册流程： 
       Eureka Client 的注册是由 Spring Cloud 的 AutoServiceRegistration 自动注册发起, 在设置应用实例 Instance 初始状态为 UP 时, 触发了 InstanceInfoReplicator#onDemandUpdate()按需更新方法, 将实例 Instance 信息通过 DiscoveryClient 注册到 Eureka Server, 期间经过了一些 EurekaHttpClient 的装饰类, 实现了诸如定期重连, 失败重试, 注册重定向, 统计收集 Metrics 信息等功能, 最后由 JerseryClient 发送 POST 请求调用 Eureka Server 的[/eureka/apps / 应用名] 端点, 请求体携带 InstanceInfo实例信息, 完成注册。在服务注册后，Eureka Client会维护一个心跳来持续通知Eureka Server，说明服务一直处于可用状态，防止被剔除。Eureka Client在默认的情况下会每隔30秒(eureka.instance.leaseRenewallIntervalInSeconds)发送一次心跳来进行服务续约。 Eureka Server之间会互相进行注册，构建Eureka Server集群，不同Eureka Server之间会进行服务同步，用来保证服务信息的一致性。
@@ -237,6 +256,9 @@ springCloud:
     自我保护：
       既然Eureka Server会定时剔除超时没有续约的服务，那就有可能出现一种场景，网络一段时间内发生了异常，所有的服务都没能够进行续约，Eureka Server就把所有的服务都剔除了，这样显然不太合理。所以，就有了自我保护机制，当短时间内，统计续约失败的比例，如果达到一定阈值（在 15 分钟之内是否低于 85%），则会触发自我保护的机制，在该机制下，Eureka Server不会剔除任何的微服务，等到正常后，再退出自我保护机制。自我保护开关(eureka.server.enable-self-preservation: false)
 
+
+
+
 Eureka与Consul对比：
 Consul强一致性(C)带来的是：（CA）
 服务注册相比Eureka会稍慢一些。因为Consul的raft协议要求必须过半数的节点都写入成功才认为注册成功
@@ -248,7 +270,7 @@ Eureka保证高可用(A)和最终一致性：（AP）
 其他方面，eureka就是个servlet程序，跑在servlet容器中; Consul则是go编写而成。
 
 
-  feign（声明式HTTP客户端调用）:
+feign（声明式HTTP客户端调用）: 以前是Resttemplate+负载均衡方式调用，每个服务都需要编写调用代码，耦合度高。feign集成了ribbon
     Decoder/Encoder: ResponseEntityDecoder/SpringEncoder
     Logger: slf4jLogger
     Contract: SpringMvcContract
@@ -259,6 +281,7 @@ Feign的整体工作流程
   扫描@EnableFeignClients注解中配置包路径。
   扫描@FeignClient注解，并将注解配置的信息注入到Spring容器中，类型为FeignClientFactoryBean。
   根据FeignClientFactoryBean的getObject()方法得到不同动态代理的类。
-  根据不同的代理执行不同的invoke()方法。
+  根据不同的代理执行不同的invoke()方法。  
 
+  ![feign](../image/feign.png)
 
