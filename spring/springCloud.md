@@ -88,8 +88,17 @@ springCloud:
       选择/META-INF/spring.factories中注解类型（泛型）,所配置的SpringConfiguration类
         EnableCircuitBreakerImportSelector、EnableDiscoveryClientImportSelector
 
-    1.使用@EnableHystrix 实现服务提供方短路
+    使用@EnableHystrix 启用Hystrix(注意：@EnableHystrix注解包含@EnableCircuitBreaker注解)
+
+    1.@DefaultProperties(defaultFallback = "fallback")+@HystrixCommand 提供公用的降级处理
+    2.@HystrixCommand单个方法配置
+    3.feign中@FeignClient(name = "service_id",fallback = xxxFallback.class)实现业务接口提供降级处理
+    4.feign中@FeignClient(name = "service_id",fallbackFactory=xxxFactory.classs)实现FallbackFactory接口提供降级处理
+
+
     ```java
+      注意：@HystrixCommand不能用在feign接口中，feign接口配置降级处理需要通过@FeignClient(name = "service_id", fallback = xxxFallback.class,fallbackFactory=xxxFactory.classs)[fallback与fallbackFactory任选一个],并且实现该业务接口或实现FallbackFactory，相关降级策略需要在yml配置。
+
       @HystrixCommand(
            //Command 配置
             commandProperties = { 
@@ -97,7 +106,6 @@ springCloud:
                     @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "100")
             },fallbackMethod = "fallbackForGetUsers" //设置 fallback 方法
     )
-    @GetMapping("/user/list")
     public Collection<User> getUsers() throws InterruptedException {
         long executeTime = random.nextInt(200);
         // 通过休眠来模拟执行时间
@@ -105,68 +113,28 @@ springCloud:
         Thread.sleep(executeTime);
         return userService.findAll();
     }
-
     /**
      * {@link #getUsers()} 的 fallback 方法
      */
     public Collection<User> fallbackForGetUsers() {
         return Collections.emptyList();
     }
-    2.使用@EnableCircuitBreaker 实现服务调用方短路
-    /**
-     * 申明 具有负载均衡能力 {@link RestTemplate}
-     * @return
-     */
-    @Bean
-    @LoadBalanced
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-    ```
+    
+    HystrixCommand与HystrixObservableCommand区别：
+      HystrixCommand用在依赖服务返回单个操作结果的时候。有两种执行方式
+　　    - execute():同步执行。从依赖的服务返回一个单一的结果对象，或是在发生错误的时候抛出异常。
+　　    - queue():异步执行。直接返回一个Future对象，其中包含了服务执行结束时要返回的单一结果对象。
+　　  HystrixObservableCommand用在依赖服务返回多个操作结果的时候。它也实现了两种执行方式
+　　    - observe():返回Obervable对象，他代表了操作的多个结果，他是一个HotObservable
+　　    - toObservable():同样返回Observable对象，也代表了操作多个结果，但它返回的是一个Cold Observable。
 
-  3.增加编程方式的短路实现
-  ```java
-    public class UserRibbonClientHystrixCommand extends HystrixCommand<Collection> {
-
-    private final String providerServiceName;
-
-    private final RestTemplate restTemplate;
-
-    public UserRibbonClientHystrixCommand(String providerServiceName, RestTemplate restTemplate) {
-        super(HystrixCommandGroupKey.Factory.asKey(
-                "User-Ribbon-Client"),
-                100);
-        this.providerServiceName = providerServiceName;
-        this.restTemplate = restTemplate;
-    }
-
-    /**
-     * 主逻辑实现
-     *
-     * @return
-     * @throws Exception
-     */
-    @Override
-    protected Collection run() throws Exception {
-        return restTemplate.getForObject("http://" + providerServiceName + "/user/list", Collection.class);
-    }
-
-    /**
-     * Fallback 实现
-     *
-     * @return 空集合
-     */
-    protected Collection getFallback() {
-        return Collections.emptyList();
-    }
-  }
-```
   当一个服务调用另一个服务由于网络原因或自身原因出现问题，调用者就会等待被调用者的响应 当更多的服务请求到这些资源导致更多的请求等待，发生连锁效应（雪崩效应）
   断路器有完全打开状态:一段时间内 达到一定的次数无法调用 并且多次监测没有恢复的迹象 断路器完全打开 那么下次请求就不会请求到该服务
   半开:短时间内 有恢复迹象 断路器会将部分请求发给该服务，正常调用时 断路器关闭
   关闭：当服务一直处于正常状态 能正常调用
 
-  服务熔断就是相当于我们电闸的保险丝,一旦发生服务雪崩的,就会熔断整个服务,通过维护一个自己的线程池,当线程达到阈值的时候就启动服务降级,如果其他请求继续访问就直接返回fallback的默认值
+  服务熔断就是相当于我们电闸的保险丝,一旦发生服务雪崩的,就会熔断整个服务,通过维护一个自己的线程池,当线程达到阈值的时候就启动服务降级,如果其他请求继续访问就直接返回fallback的默认值。
+  熔断状态：打开、关闭、半开
   熔断器原理
     - 开始时断路器处于关闭状态(Closed)。
     - 如果调用持续出错、超时或失败率超过一定限制，断路器打开进入熔断状态，后续一段时间内的所有请求都会被直接拒绝。
@@ -186,13 +154,45 @@ springCloud:
   熔断器流程：
     Hystrix在运行过程中会向每个commandKey对应的熔断器报告成功、失败、超时和拒绝的状态，熔断器维护并统计这些数据，并根据这些统计信息来决策熔断开关是否打开。如果打开，熔断后续请求，快速返回。隔一段时间（默认是5s）之后熔断器尝试半开，放入一部分流量请求进来，相当于对依赖服务进行一次健康检查，如果请求成功，熔断器关闭。
 
-  circuitBreaker.errorThresholdPercentage
+
+  circuitBreaker.enable
+    是否开启熔断器。
+  circuitBreaker.errorThresholdPercentage：
     错误率，默认值50%，例如一段时间（10s）内有100个请求，其中有54个超时或者异常，那么这段时间内的错误率是54%，大于了默认值50%，这种情况下会触发熔断器打开。
-  circuitBreaker.requestVolumeThreshold
+  circuitBreaker.requestVolumeThreshold：
     默认值20。含义是一段时间内至少有20个请求才进行errorThresholdPercentage计算。比如一段时间了有19个请求，且这些请求全部失败了，错误率是100%，但熔断器不会打开，总请求数不满足20。
-  circuitBreaker.sleepWindowInMilliseconds
+  circuitBreaker.sleepWindowInMilliseconds：
     半开状态试探睡眠时间，默认值5000ms。如：当熔断器开启5000ms之后，会尝试放过去一部分流量进行试探，确定依赖服务是否恢复。
 
+  一定时间内请求次数达到次数，且错误率大于错误率，开启断路器。
+
+   ```java
+
+     /**
+     * 熔断处理
+     */
+    @RequestMapping("/hystrix/{id}")
+    @HystrixCommand(fallbackMethod = "fallback1", commandProperties = {
+            @HystrixProperty(name = "circuitBreaker.enabled", value = "true"),//是否开启断路器
+            @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "2"),//请求次数
+            @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000"),//时间窗口期
+            @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "60"),//失败率阀值跳闸
+    })
+    public Object hystrixTest(@PathVariable("id") String id) {
+        if (Integer.parseInt(id) > 0) {
+            throw new RuntimeException("id不能小于0");
+        }
+        return System.currentTimeMillis();
+    }
+
+    /**
+     * 服务熔断方法
+     */
+    public Object fallback1(String id) {
+        return "服务熔断";
+    }
+
+   ``` 
 
 
   zuull:
