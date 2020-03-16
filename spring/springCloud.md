@@ -119,7 +119,7 @@ springCloud:
     public Collection<User> fallbackForGetUsers() {
         return Collections.emptyList();
     }
-    
+
     HystrixCommand与HystrixObservableCommand区别：
       HystrixCommand用在依赖服务返回单个操作结果的时候。有两种执行方式
 　　    - execute():同步执行。从依赖的服务返回一个单一的结果对象，或是在发生错误的时候抛出异常。
@@ -218,7 +218,12 @@ springCloud:
     负载卸载 预先为每种类型的请求分配容量，当请求超过容量时自动丢弃。
     静态资源处理 直接在边界返回某些响应。
 
-  路由配置：
+  Zuul1.0基于Servlet2.5阻塞I/O实现，不支持长连接。
+  Zuul2.0较Zuul1.0有较大提升，不开源。
+  GateWay基于Servelt3、WebFlux、netty异步非阻塞I/O，支持长连接,（netty运行时）不能在sservlet容器中使用，或war包运行。
+
+
+  zuul路由配置：
   ```txt
     zuul:
       routes:
@@ -226,6 +231,21 @@ springCloud:
           service-id: rest-demo
           path: /rest/**
     ```
+  gateway三大功能：路由、断言、过滤（对请求前后进行修改拦截。）。
+  1.客户端向Gateway发送请求，然后在Gateway HandleMapping中找到与请求相匹配的路由，将其转发到WebHandler。
+  2.WebHandler再通过指定的过滤器链来将请求发送到实际的服务执行业务逻辑，然后返回。
+  3.过滤器之间用虚线分开是因为过滤器可能会在发送代理请求之前（pre）或之后（post）执行业务逻辑。
+  4.Filter在‘pre’类型的过滤器可以做参数校验、权限校验、流量监控、日志输出、协议转换等，
+    在'post'类型的过滤器中可以做响应内容、响应头的修改、日志的输出、流量的监控等
+
+  predicate（断言）：after、before、between、cookie、header、host、method、path、query、remoteaddr、weight
+  filter分为：GatewayFilter、GlobalFilter（自定义过滤器）
+    - GatewayFilter：包含对请求头、响应头、session、令牌桶过滤、熔断等处理
+    - GlobalFilter：实现GlobalFilter, Ordered接口。支持sockjs、websocket
+    - HTTP超时、跨域、tls/ssl
+
+
+
 
   eureka-server:
      1. 错误：  Instances currently registered with Eureka
@@ -285,3 +305,19 @@ Feign的整体工作流程
 
   ![feign](../image/feign.jpg)
 
+
+
+##springcloud-bus：消息总线
+
+##springcloud-stream：屏蔽消息中间件差异，提供统一的消息编程模型。
+  - binder：中间件绑定器
+  - channel：消息存储
+  - source：生产者或消费者
+解决消息重复消费和持久化问题：将消费者放到同一个分组内.
+
+ ##springcloud-nacos:支持服务注册发现和配置
+  Namespace（命名空间）=（默认）public
+  Group（分组）=（默认）DEFAULT_GROUP，把相同的group分组划分到同一个分钟
+  cluster（集群）=DEFAULT
+  data-id：${spring.application.name}-${spring.profiles.active}.yaml
+  通过@RefreshScope动态刷新配置
