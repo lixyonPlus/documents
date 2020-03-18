@@ -1,10 +1,10 @@
-##docker : 
+## docker : 
   - namespace : 环境隔离（进程、网络以及文件系统）
   - cgroup：资源隔离（cpu、内存）
   - UnionFS（镜像分层存储）
 
 
-###docker for mac开启远程api：
+### docker for mac开启远程api：
  1. 用 socat
 
  - brew install socat #安装socat：
