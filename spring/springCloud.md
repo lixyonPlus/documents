@@ -1,21 +1,21 @@
-springCloud:
-  1.bootstrap.yml（bootstrap.properties）与application.yml（application.properties）执行顺序
-      ### bootstrap.yml（bootstrap.properties）用来程序引导时执行，应用于更加早期配置信息读取，如可以使用来配置application.yml中使用到参数等
-      ### application.yml（application.properties) 应用程序特有配置信息，可以用来配置后续各个模块中需使用的公共参数等。
-      ### bootstrap.yml 先于 application.yml 加载
-      应用场景 ：
-        1.当使用 Spring Cloud Config Server的时候，你应该在 bootstrap.yml里面指定 spring.application.name和 spring.cloud.config.server.git.uri
-        2.一些加密/解密的信息
+# springCloud:
+ ## 1.bootstrap.yml（bootstrap.properties）与application.yml（application.properties）执行顺序
+  ### bootstrap.yml（bootstrap.properties）用来程序引导时执行，应用于更加早期配置信息读取，如可以使用来配置application.yml中使用到参数等
+  ### application.yml（application.properties) 应用程序特有配置信息，可以用来配置后续各个模块中需使用的公共参数等。
+  ### bootstrap.yml 先于 application.yml 加载
+  #### 应用场景 ：
+    - 1.当使用 Spring Cloud Config Server的时候，你应该在 bootstrap.yml里面指定 spring.application.name和 spring.cloud.config.server.git.uri
+    - 2.一些加密/解密的信息
 
-  ribbon：客户端负载均衡（软负载均衡）
-    调用链路选择服务器逻辑
-      LoadBalancerClient（RibbonLoadBalancerClient） -> ILoadBalancer（ZoneAwareLoadBalancer） -> IRule (ZoneAvoidanceRule)
-      LoadBalancerClient:
-        转化URI，将含应用名称URI转化成具体主机+端口形式
-        选择服务实例，通过负载算法，选择指定服务中的一台机器实例
-        请求执行回调，针对选择后的服务实例，执行具体的请求回调操作
-        默认实现：RibbonLoadBalancerClient
-      LoadBalancerContext:
+# ribbon：客户端负载均衡（软负载均衡）
+ ## 调用链路选择服务器逻辑
+  ### LoadBalancerClient（RibbonLoadBalancerClient） -> ILoadBalancer（ZoneAwareLoadBalancer） -> IRule (ZoneAvoidanceRule)
+   #### LoadBalancerClient:
+   - 转化URI，将含应用名称URI转化成具体主机+端口形式
+   - 选择服务实例，通过负载算法，选择指定服务中的一台机器实例
+   - 请求执行回调，针对选择后的服务实例，执行具体的请求回调操作
+   - 默认实现：RibbonLoadBalancerClient
+   #### LoadBalancerContext:
         转化URI，将含应用名称URI转化成具体主机+端口形式
         组件关联，关联RetryHandler、ILoadBalancer等
         记录服务统计信息，记录请求时间、错误数量等
