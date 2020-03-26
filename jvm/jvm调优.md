@@ -119,3 +119,32 @@ the space 69632K,   4% used [0x227d0000, 0x22aeb958, 0x22aeba00, 0x26bd0000)
 - 因为年老代的并发收集器使用标记、清除算法，所以不会对堆进行压缩。当收集器回收时，他会把相邻的空间进行合并，这样可以分配给较大的对象。但是，当堆空间较小时，运行一段时间以后，就会出现“碎片”，如果并发收集器找不到足够的空间，那么并发收集器将会停止，然后使用传统的标记、清除方式进行回收。如果出现“碎片”，可能需要进行如下配置：  
 - 1. -XX:+UseCMSCompactAtFullCollection：使用并发收集器时，开启对年老代的压缩。  
 - 2. -XX:CMSFullGCsBeforeCompaction=0：上面配置开启的情况下，这里设置多少次Full GC后，对年老代进行压缩  
+
+### 设置日志参数
+    -Xloggc:/opt/logs/xx-gc-%t.log -XX:+UseGCLogFileRotation -XX:NumberOfGcLogFiles=5 -XX:GCLogFileSize=20M -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCCause
+
+### 调优步骤
+    top查看程序占用的资源
+    jps查看java进程
+    jstack pid 查看堆栈，重点关注：WAITING BLOCKED 
+    假如有一个进程有100个线程，很多线程都在waiting on<xxx>,一定要找到哪个线程持有这个锁，根据jstack dump的信息，找<xxx>，看哪个线程持有这把锁的RUNNABLE。<xxx>表示线程名称，这也是阿里规范线程/池需要指定名称。
+    jinfo 查看程序运行jvm参数
+    jmap -histo pid | head -20 查询内存中前20行信息 【卡顿】
+    jmap -dump:format=b,file=文件名 [pid] 导出JVM内存信息 【卡顿】
+    在JVM的配置参数中可以添加 -XX:+HeapDumpOnOutOfMemoryError 参数，当应用抛出 OutOfMemoryError 时自动生成dump文件；
+ 
+
+
+ #### arthas（阿尔萨斯）线上调优
+    - dashboard：查看忙碌的线程、堆使用情况
+    - jvm（jinfo）：jvm信息、垃圾回收器等
+    - thread -b 产生死锁的线程
+    - thread id 查看某个线程栈信息
+    - sc *com.lxy* 查询加载的类
+    - sm *com.lxy* 查询方法
+    - trace com.lxy.Stringutils isBlank 跟踪方法执行时间
+    - monitor com.lxy.Stringutils isBlank 跟踪方法的入参和出参
+    - heapdump --live xx.hprof 导出活着的对象  [卡顿]  
+    - jad com.lxy.Demo 反编译类
+    - redefine /root/com/lxy/Demo.class 修改内存中的class文件
+    - 
