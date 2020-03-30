@@ -119,4 +119,4 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
   - 启动类继承SpringBootServletInitializer类重写configure方法。
   - 修改pom文件配置war格式。
 
-### SpringBootApplication包含@Configureation、@EnableAutoConfiguration、@ComponentScann
+### SpringBootApplication包含@SpringBootConfiguration、@EnableAutoConfiguration、@ComponentScann

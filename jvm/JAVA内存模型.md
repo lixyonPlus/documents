@@ -27,6 +27,7 @@
 
 #### 内存屏障
    - 为了保证内存可见性，Java编译器在生成指令序列的适当位置会插入内存屏障指令来禁止特定类型的处理器重排序，java把内存屏障分为4类。LoadLoad、StoreStore、LoadStore、StoreLoad，其中StoreLoad同时具备其他三个屏障的效果。
+  
 #### Happens-Benfore：前面一个操作的结果对后续的操作是可见的。
     1. 程序顺序性规则：在一个线程中，按照程序顺序Happers-Before于后续操作可见。
     2. volatile变量规则：对一个volatile变量的写操作，Happens-Before于后续对这个Volatile变量的读操作。
@@ -38,7 +39,7 @@
     8. 对象终结规则： 一个对象的初始化完成（构造方法执行结束）先行发生于他的finalize（）方法的开始。
     9. final：变量生而不变，
     10. volatile：目的是为了禁用缓存和编译优化。
-    
+
 #### 3个特性：
    - 有序性、可见性、原子性,导致可见性的原因是缓存，导致有序性的原因是编译优化（指令重排）涉及 volatile、synchronized、final 以及 6项Happens-Before规则，原子性是因为线程切换。
   
