@@ -7,7 +7,7 @@
 - BeanFactoryPostProcessor：后置执行器
 - BeanPostProcess： AOP基于此实现
 
-- BeanFactory定义了 IOC 容器的最基本形式，并提供了 IOC 容器应遵守的的最基本的接口，也就是 Spring IOC所遵守的最底层和最基本的编程规范。在  Spring 代码中， BeanFactory 只是个接口，并不是 IOC 容器的具体实现，但是 Spring 容器给出了很多种实现，如 DefaultListableBeanFactory 、 XmlBeanFactory 、 ApplicationContext等，都是附加了某种功能的实现。
+- BeanFactory定义了 IOC 容器的最基本形式，并提供了 IOC 容器应遵守的的最基本的接口，也就是 Spring IOC所遵守的最底层和最基本的编程规范。在Spring代码中， BeanFactory 只是个接口，并不是 IOC 容器的具体实现，但是 Spring 容器给出了很多种实现，如 DefaultListableBeanFactory 、 XmlBeanFactory 、 ApplicationContext等，都是附加了某种功能的实现。
 
 - 一般情况下，Spring 通过反射机制利用 <bean> 的 class 属性指定实现类实例化 Bean。在某些情况下，实例化Bean 过程比较复杂，如果按照传统的方式，则需要在 <bean> 中提供大量的配置信息。配置方式的灵活性是受限的，这时采用编码的方式可能会得到一个简单的方案。Spring 为此提供了一个org.springframework.bean.factory.FactoryBean 的工厂类接口，用户可以通过实现该接口定制实例化 Bean 的逻辑。
 FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自身就提供了 70 多个 FactoryBean 的实现。它们隐藏了实例化一些复杂 Bean 的细节，给上层应用带来了便利。从 Spring 3.0 开始， FactoryBean 开始支持泛型，即接口声明改为 FactoryBean<T> 的形式：区别：
@@ -48,8 +48,8 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 ### 所谓 IOC ，就是由 Spring IOC 容器来负责对象的生命周期和对象之间的关系
 
 ### spring bean生命周期：
-  - 实例化bean对象，设置对象属性，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口，是否配置有销毁方法。
-
+  - 实例化bean对象，设置对象属性，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口执行destroy方法，是否配置有销毁方法。
+  
 
 ### spring 解决循坏依赖问题：三层依赖
 - 其中第一层是singletonObjects，首先会去看singletonObjects是否已经创建了一个对象。如果没有，那么从第二层缓存earlySingletonObjects提前曝光对象的缓存中获取；如果没有，那么最后从第三层缓存singletonFactories单实例工厂缓存中获取。当获取成功后，会把第三层缓存singletonFactories的bean去掉，加入到第二层缓存中。
