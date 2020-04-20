@@ -40,7 +40,7 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
  - 2. 根据 Pointcut 定义的匹配规则，判断当前正在实例化的 bean 是否符合规则
  - 3. 如果符合，代理生成器将切面逻辑 Advice 织入 bean 相关方法中，并为目标 bean 生成代理对象
  - 4. 将生成的 bean 的代理对象返回给 BeanFactory 容器，到此，AOP 逻辑执行结束
-
+ 
 ### springmvc优化点：每次发起请求时，springmvc没有对请求地址进行缓存。
 
 ### AbstractAutoProxyCreator:spring代理对象顶级抽象类
@@ -48,7 +48,7 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 ### 所谓 IOC ，就是由 Spring IOC 容器来负责对象的生命周期和对象之间的关系
 
 ### spring bean生命周期：
-  - 实例化bean对象，设置对象属性，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口执行destroy方法，是否配置有销毁方法。
+  - 实例化bean对象，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口执行destroy方法，是否配置有销毁方法。
   
 
 ### spring 解决循坏依赖问题：三层依赖

@@ -125,7 +125,7 @@
 　　    - execute():同步执行。从依赖的服务返回一个单一的结果对象，或是在发生错误的时候抛出异常。
 　　    - queue():异步执行。直接返回一个Future对象，其中包含了服务执行结束时要返回的单一结果对象。
 　　  HystrixObservableCommand用在依赖服务返回多个操作结果的时候。它也实现了两种执行方式
-　　    - observe():返回Obervable对象，他代表了操作的多个结果，他是一个HotObservable
+　　    - observe():返回Observable对象，他代表了操作的多个结果，他是一个HotObservable
 　　    - toObservable():同样返回Observable对象，也代表了操作多个结果，但它返回的是一个Cold Observable。
 
   #### 当一个服务调用另一个服务由于网络原因或自身原因出现问题，调用者就会等待被调用者的响应 当更多的服务请求到这些资源导致更多的请求等待，发生连锁效应（雪崩效应）
@@ -191,7 +191,7 @@
    ``` 
 
 
-  # zuull:
+  # zuul:
   ## 两种启动方式：
     @EnableZuulServer
       DispatcherServlet

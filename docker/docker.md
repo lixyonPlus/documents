@@ -35,7 +35,7 @@ docker run -p 3375:2375 -v /var/run/docker.sock:/var/run/docker.sock \
  - 运行高效、轻量级
  - 
 
- ### 什么是Docker镜像什么是Docker镜像
+ ### 什么是Docker镜像
   - Docker镜像是Docker容器的源代码，Docker镜像用于创建容器。使用build命令创建镜像。
   
  ### 什么是Docker容器
