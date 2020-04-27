@@ -216,7 +216,7 @@
 
   #### Zuul1.0基于Servlet2.5阻塞I/O实现，不支持长连接。
   #### Zuul2.0较Zuul1.0有较大提升，不开源。
-  #### GateWay基于Servelt3、WebFlux、netty异步非阻塞I/O，支持长连接,（netty运行时）不能在sservlet容器中使用，或war包运行。
+  #### GateWay基于Servelt3、WebFlux、netty异步非阻塞I/O，支持长连接,（netty运行时）不能在servlet容器中使用，或war包运行。
 
   ### zuul路由配置：
      ```txt
@@ -272,7 +272,12 @@
  ### 自我保护：
       既然Eureka Server会定时剔除超时没有续约的服务，那就有可能出现一种场景，网络一段时间内发生了异常，所有的服务都没能够进行续约，Eureka Server就把所有的服务都剔除了，这样显然不太合理。所以，就有了自我保护机制，当短时间内，统计续约失败的比例，如果达到一定阈值（在 15 分钟之内是否低于 85%），则会触发自我保护的机制，在该机制下，Eureka Server不会剔除任何的微服务，等到正常后，再退出自我保护机制。自我保护开关(eureka.server.enable-self-preservation: false)
 
+### 服务强制下线
+    1. PUT： /eureka/apps/appID/instanceID/status?value=OUT_OF_SERVICE
+    2. DELETE： /eureka/apps/应用名 服务下线，如果服务未kill，30秒后会重新注册
 
+### 手动上线
+    1. DELETE：/eureka/apps/appID/instanceID/status?value=UP
 
 
 ### Eureka与Consul对比：
