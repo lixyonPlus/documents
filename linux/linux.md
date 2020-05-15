@@ -121,4 +121,69 @@
         -F [:#/]    //定义了三个分隔符
         OFS  //输出字段分隔符， 默认也是空格，可以改为其他的
         ORS  //输出的记录分隔符，默认为换行符,即处理结果也是一行一行输出到屏幕
+### mount挂载
+    mount -t auto /dev/cdrom(设备文件名) /mnt/cdrom(挂载点)     #挂载cdrom,如果cdrom不存在则创建/mnt/cdrom目录
+### mount卸载(通过设备名卸载,通过挂载点卸载)
+    umount -v /mnt/cdrom/
 
+### 开启swap
+    1.创建用于交换分区的文件：
+        dd if=/dev/zero of=/mnt/swap bs=1M count=8192   //创建8g虚拟内存 bs=block_size count=number_of_block
+    2. 设置交换分区文件：
+       mkswap /mnt/swap
+    3. 立即启用交换分区文件：
+       swapon /mnt/swap
+    4. 查看是否生效,注：如果在 /etc/rc.local 中有 swapoff -a 需要修改为 swapon -a
+      free -m
+    5. 设置开机时自启用 SWAP 分区：
+       在/etc/fstab文件末尾添加： 
+       /mnt/swap swap swap defaults 0 0
+    6.在 Linux 系统中，可以通过查看 /proc/sys/vm/swappiness内容的值来确定系统对 SWAP 分区的使用原则。当 swappiness 内容的值为 0 时，表示最大限度地使用物理内存，物理内存使用完毕后，才会使用 SWAP 分区。当 swappiness 内容的值为 100 时，表示积极地使用 SWAP 分区，并且把内存中的数据及时地置换到 SWAP 分区。
+        临时修改：echo 10 >/proc/sys/vm/swappiness
+        永久修改：修改/etc/sysctl.conf文件vm.swappiness属性值改为10，执行 sysctl -p
+
+### 关闭swap
+    当系统出现内存不足时，开启 SWAP 可能会因频繁换页操作，导致 IO 性能下降。
+    1.swapoff /mnt/swap  #关闭swap
+    2.修改 /etc/fstab,删除相关内容
+    3.修改 swappiness文件或修改/etc/sysctl.conf文件，执行sysctl -p
+
+### linux开启/关闭/重启
+    halt命令用来关闭正在运行的Linux操作系统。halt命令会先检测系统的runlevel，若runlevel为0或6，则关闭系统，否则即调用shutdown来关闭系统。
+    -d：不要在wtmp中记录；
+    -f：不论目前的runlevel为何，不调用shutdown即强制关闭系统；
+    -i：在halt之前，关闭全部的网络界面；
+    -n：halt前，不用先执行sync；
+    -p：halt之后，执行poweroff；
+    -w：仅在wtmp中记录，而不实际结束系统。
+    halt -p     #关闭系统后关闭电源。
+    halt -d     #关闭系统，但不留下纪录。
+
+    reboot命令用来重新启动正在运行的Linux操作系统。
+    -d：重新开机时不把数据写入记录文件/var/tmp/wtmp。本参数具有“-n”参数效果；
+    -f：强制重新开机，不调用shutdown指令的功能；
+    -i：在重开机之前，先关闭所有网络界面；
+    -n：重开机之前不检查是否有未结束的程序；
+    -w：仅做测试，并不真正将系统重新开机，只会把重开机的数据写入/var/log目录下的wtmp记录文件。
+    reboot        //重开机。
+    reboot -w     //做个重开机的模拟（只有纪录并不会真的重开机）。
+
+    shutdown命令用来系统关机命令。shutdown指令可以关闭所有程序，并依用户的需要，进行重新开机或关机的动作。
+    -c：当执行“shutdown -h 11:50”指令时，只要按+键就可以中断关机的指令；
+    -f：重新启动时不执行fsck；
+    -F：重新启动时执行fsck；
+    -h：将系统关机；
+    -k：只是送出信息给所有用户，但不会实际关机；
+    -n：不调用init程序进行关机，而由shutdown自己进行；
+    -r：shutdown之后重新启动；
+    -t<秒数>：送出警告信息和删除信息之间要延迟多少秒。
+    shutdown -h now #指定现在立即关机
+
+    poweroff命令用来关闭计算机操作系统并且切断系统电源。
+    -n：关闭操作系统时不执行sync操作；
+    -w：不真正关闭操作系统，仅在日志文件“/var/log/wtmp”中；
+    -d：关闭操作系统时，不将操作写入日志文件“/var/log/wtmp”中添加相应的记录；
+    -f：强制关闭操作系统；
+    -i：关闭操作系统之前关闭所有的网络接口；
+    -h：关闭操作系统之前将系统中所有的硬件设置为备用模式。
+    poweroff
