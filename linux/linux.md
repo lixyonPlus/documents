@@ -187,3 +187,72 @@
     -i：关闭操作系统之前关闭所有的网络接口；
     -h：关闭操作系统之前将系统中所有的硬件设置为备用模式。
     poweroff
+
+### fg/bg前后台执行
+    ctrl+z #掛起當前執行程序
+    bg %進程id #將程序放到後臺運行 
+    jobs  #列出所有後臺進程
+    fg %進程id  #將後臺程序調到前臺執行
+
+### curl下载文件
+    curl -o xxx www.baidu.com
+
+### wget下载文件
+    curl -O xxx www.baidu.com
+
+### RPM安装
+    rpm -ivh your-package.rpm #安装rpm软件包
+    rpm -i you-package.src.rpm && cd /usr/src/redhat/SPECS && rpmbuild -bb your-package.specs
+        #这时在/usr/src/redhat/RPM/i386/（根据具体包的不同，也可能是i686,noarch等等）在这个目录下，有一个新的rpm包，这个是编译好的二进制文件。执行rpm -i new-package.rpm即可安装完成。
+
+### RPM卸载
+    rpm -e proftpd 
+    rpm -e --nodeps # 强制卸载
+
+### 查询已安装的rpm包
+    rpm -qa | grep sql
+
+### basename与dirname
+    basename #显示路径中文件名称
+    dirname #显示路径中的路径
+    basename /user/xx.jpg #结果为 xx.jpg
+    dirname /user/xx.jpg #结果为 /user
+
+### 软链接/硬链接
+    原理上，硬链接和源文件的inode节点号相同，两者互为硬链接。软连接和源文件的inode节点号不同，进而指向的block也不同，软连接block中存放了源文件的路径名。实际上，硬链接和源文件是同一份文件，而软连接是独立的文件，类似于快捷方式，存储着源文件的位置信息便于指向。使用限制上，不能对目录创建硬链接，不能对不同文件系统创建硬链接，不能对不存在的文件创建硬链接；可以对目录创建软连接，可以跨文件系统创建软连接，可以对不存在的文件创建软连接。
+    ln -s oldfile slink #软链接
+    ln  oldfile slink #硬链接
+
+### sed命令
+    sed 's/q/Q/g' file #全局替换file文件中每一行q为Q
+    sed 's/q/Q/' file #全局替换file文件中q为Q
+    sed -i '/q/d' file #删除file文件中包含q的行
+    sed -i '/q/a xxxx' file #在file文件中包含q的下一行追加xxxx
+    sed -i '/\/bin\/sh/a xxxx' file #在file文件中包含\bin\sh的下一行插入sxxxx
+    sed -i '/^nginx/i xxxxx' file #匹配到以nginx开头的行，在匹配行前面一行插入xxxxx
+    
+### chown改变某个文件或目录的所有者和所属的组
+    chown -R liu /usr/meng #将目录/usr/meng及其下面的所有文件、子目录的文件主改成liu
+
+### chmod命令用来变更文件或目录的权限
+    chmod 777 /root #当前用户拥有读写执行权限
+    chmod +x /root #当前用户拥有执行权限    
+    r=读取属性　　//值＝4
+    w=写入属性　　//值＝2
+    x=执行属性　　//值＝1
+    rwx、rw-、r--
+
+### egrep
+    egrep Linux * #查找当前目录下所有包含linux文件
+
+### grep在文件中搜索一个单词，命令会返回一个包含搜索内容的文本行
+    grep match_pattern file_name
+    grep "match_pattern" file_1 file_2 file_3  #在多个文件中查找
+    grep -v "match_pattern" file_name #反向查找
+    grep "text" . -r -n #在多级目录中对文本进行递归搜索
+
+
+
+### split
+    split -l 10 date.file #把文件分割成每个包含10行的小文件
+    split -b 10k date.file  #把文件分割成大小为10KB的小文件
