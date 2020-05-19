@@ -251,8 +251,19 @@
     grep -v "match_pattern" file_name #反向查找
     grep "text" . -r -n #在多级目录中对文本进行递归搜索
 
-
-
 ### split
     split -l 10 date.file #把文件分割成每个包含10行的小文件
     split -b 10k date.file  #把文件分割成大小为10KB的小文件
+
+### zip
+    zip -r mysql.zip mysql #将mysql文件夹压缩成mysql.zip
+
+### unzip
+    unzip mysql.zip #在当前目录下直接解压mysql.zip
+
+### tar 
+    tar -cvf 123.tar file1 file2 dir1 #将两个文件（file1和file2）和一个文件夹(dir1)压缩成一个123.tar文件
+    tar -zcvf log.tar.gz log2012.log   打包后，以gzip 压缩 
+    tar-xvf log.tar.gz #解压到当前目录
+    tar -zxvf apache-tomcat-7.0.75.tar.gz -C /root #apache-tomcat.7.0.75.tar.gz直接解压到root目录下
+
