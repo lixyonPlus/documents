@@ -267,3 +267,57 @@
     tar-xvf log.tar.gz #解压到当前目录
     tar -zxvf apache-tomcat-7.0.75.tar.gz -C /root #apache-tomcat.7.0.75.tar.gz直接解压到root目录下
 
+### free可以显示当前系统未使用的和已使用的内存数目，还可以显示被内核使用的内存缓冲区
+    -b：以Byte为单位显示内存使用情况；
+    -k：以KB为单位显示内存使用情况；
+    -m：以MB为单位显示内存使用情况；
+    第一部分Mem行解释：total = used + free
+    total：内存总数；
+    used：已经使用的内存数；
+    free：空闲的内存数；
+    shared：当前已经废弃不用；
+    buffers Buffer：缓存内存数；
+    cached Page：缓存内存数。
+    第二部分(-/+ buffers/cache)解释:
+    (-buffers/cache) used内存数：第一部分Mem行中的 used – buffers – cached
+    (+buffers/cache) free内存数: 第一部分Mem行中的 free + buffers + cached
+    -buffers/cache反映的是被程序实实在在吃掉的内存，而+buffers/cache反映的是可以挪用的内存总数。
+
+### top命令可以实时动态地查看系统的整体运行情况，是一个综合了多方信息监测系统性能和运行信息的实用工具。通过top命令所提供的互动式界面，用热键可以管理
+    top
+    在top命令执行过程中可以使用的一些交互命令。这些命令都是单字母的，如果在命令行中使用了-s选项， 其中一些命令可能会被屏蔽。
+    m：切换显示内存信息；
+    M：根据驻留内存大小进行排序；
+    P：根据CPU使用百分比大小进行排序；
+    q：退出程序；
+
+### du文件和目录磁盘使用的空间的查看
+    du
+    -b或-bytes 显示目录或文件大小时，以byte为单位。
+    -k或--kilobytes 以KB(1024bytes)为单位输出。
+    -m或--megabytes 以MB为单位输出。
+
+### df命令用于显示磁盘分区上的可使用的磁盘空间。默认显示单位为KB。可以利用该命令来获取硬盘被占用了多少空间，目前还剩下多少空间等信息。  
+    df -h #使用-h选项以KB以上的单位来显示，可读性高
+
+### source命令（从 C Shell 而来）是bash shell的内置命令。点命令，就是一个点符号，（从Bourne Shell而来）是source的另一名称。这两个命令都以一个脚本为参数，该脚本将作为当前shell的环境执行，即不会启动一个新的子进程。所有在脚本中设置的变量将成为当前Shell的一部分。
+
+### source、sh、bash、./对比命令
+    source a.sh # 在当前shell内去读取、执行a.sh，而a.sh不需要有"执行权限",source命令可以简写为".", . a.sh 注意：中间是有空格的。
+    sh a.sh,bash a.sh # 都是打开一个subshell去读取、执行a.sh，而a.sh不需要有"执行权限"通常在subshell里运行的脚本里设置变量，不会影响到父shell的。
+    ./a.sh
+    #bash: ./a.sh: 权限不够
+    chmod +x a.sh
+    ./a.sh
+    打开一个subshell去读取、执行a.sh，但a.sh需要有"执行权限",可以用chmod +x添加执行权限
+
+### scp用于在Linux下进行远程拷贝文件的
+    1.远处复制文件到本地目录
+        scp root@10.10.10.10:/opt/soft/nginx-0.5.38.tar.gz /opt/soft/
+    2.从远处复制目录到本地
+        scp -r root@10.10.10.10:/opt/soft/mongodb /opt/soft/
+    3.上传本地文件到远程机器指定目录
+        scp /opt/soft/nginx-0.5.38.tar.gz root@10.10.10.10:/opt/soft/scptest
+    4.上传本地目录到远程机器指定目录
+        scp -r /opt/soft/mongodb root@10.10.10.10:/opt/soft/scptest
+
