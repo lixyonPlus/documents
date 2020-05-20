@@ -302,7 +302,7 @@
 
 ### source命令（从 C Shell 而来）是bash shell的内置命令。点命令，就是一个点符号，（从Bourne Shell而来）是source的另一名称。这两个命令都以一个脚本为参数，该脚本将作为当前shell的环境执行，即不会启动一个新的子进程。所有在脚本中设置的变量将成为当前Shell的一部分。
 
-### source、sh、bash、./对比命令
+### source、sh、bash、./ 对比
     source a.sh # 在当前shell内去读取、执行a.sh，而a.sh不需要有"执行权限",source命令可以简写为".", . a.sh 注意：中间是有空格的。
     sh a.sh,bash a.sh # 都是打开一个subshell去读取、执行a.sh，而a.sh不需要有"执行权限"通常在subshell里运行的脚本里设置变量，不会影响到父shell的。
     ./a.sh
