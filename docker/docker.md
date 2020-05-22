@@ -67,7 +67,28 @@ docker run -p 3375:2375 -v /var/run/docker.sock:/var/run/docker.sock \
  - COPY –from = 0行仅将前一阶段的构建文件复制到此新阶段。
  - 默认情况下，阶段未命名，您可以通过整数来引用它们，从第0个FROM指令开始。但是，您可以通过向FROM指令添加as NAME来命名您的阶段。此示例通过命名阶段并使用COPY指令中的名称来改进前一个示例。
  
+### docker run经历了什么
+	检查本地是否存在指定的镜像，不存在就从公有仓库下载
+	利用镜像创建并启动一个容器
+	分配一个文件系统，并在只读的镜像层外面挂载一层可读写层
+	从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中去
+	从地址池配置一个 ip 地址给容器
+	执行用户指定的应用程序
+	执行完毕后容器被终止
 
+### 容器要想访问外部网络，需要本地系统的转发支持。在Linux 系统中，检查转发是否打开。
+	sysctl net.ipv4.ip_forward
+	net.ipv4.ip_forward = 1 #如果为 0，说明没有开启转发，则需要手动打开。$sysctl -w net.ipv4.ip_forward=1
+	如果在启动 Docker 服务的时候设定 --ip-forward=true, Docker 就会自动设定系统的 ip_forward 参数为 1。
 
+### 当启动 Docker 服务时候，默认会添加一条转发策略到 iptables 的 FORWARD 链上。策略为通过（ACCEPT）还是禁止（DROP）取决于配置--icc=true（缺省值）还是 --icc=false。当然，如果手动指定 --iptables=false 则不会添加 iptables 规则。可见，默认情况下，不同容器之间是允许网络互通的。如果为了安全考虑，可以在 /etc/default/docker 文件中配置 DOCKER_OPTS=--icc=false 来禁止它。
 
+### iptables -t nat -nL 查看nat转发
+### brctl show 查看网桥信息
+### sudo docker inspect -f '{{.State.Pid}}' container_id
+### ENTRYPOINT 配置容器启动后执行的命令，并且不可被 docker run 提供的参数覆盖。每个 Dockerfile 中只能有一个 ENTRYPOINT，当指定多个时，只有最后一个起效。
+
+### WORKDIR为后续的 RUN、CMD、ENTRYPOINT 指令配置工作目录。可以使用多个 WORKDIR 指令，后续命令如果参数是相对路径，则会基于之前命令指定的路径
+
+### ONBUILD 配置当所创建的镜像作为其它新创建镜像的基础镜像时，所执行的操作指令。
 

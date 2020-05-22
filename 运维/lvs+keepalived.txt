@@ -1,0 +1,439 @@
+一、在LVS+Keepalived环境里面，lvs主要的工作是提供调度算法，把客户端请求按照需求调度在real服务器，keepalived主要的工作是提供lvs控制器的一个冗余，并且对real服务器做健康检查，发现不健康的real服务器，就把它从lvs集群中剔除，real服务器只负责提供服务。
+
+二、lvs和keepalived的安装
+      环境规划: 2*(lvs+keepalived服务器)+n*real-server，一般lvs+keepalived是这样的架构。
+
+1、下载软件包
+在http://www.linuxvirtualserver.org/ 下载lvs的软件包
+在http://www.keepalived.org/ 下载keepalived软件包
+
+2、先编译安装lvs，再安装keepalived，安装lvs需要内核源码
+下载lvs源码的时候，一定要选择你内核版本对应的源码包。
+
+# uname  -r
+2.6.18-164.el5PAE
+#yum install kernel-devel -y  //安装内核源码包
+#ln -s /usr/src/kernels/2.6.18-164.el5PAE-i686/ /usr/src/linux
+#wget http://www.linuxvirtualserver.org/software/kernel-2.6/ipvsadm-1.24.tar.gz  //ipvsadm包就是lvs软件包，别觉得名字不一样
+# tar -zxvf ipvsadm-1.24.tar.gz
+# cd ipvsadm-1.24
+#make && make install
+
+检查lvs是否安装成功：
+#ipvsadm //查看是否有输出
+#lsmod | grep ip_vs  //如果ipvsadm有输出，那么使用这个命令查看是否加载ip_vs模块，如果加载，那么lvs算安装成功。
+
+编译安装keepalived，一定在安装完lvs以后在安装keepalive
+
+#wget http://www.keepalived.org/software/keepalived-1.1.15.tar.gz //不建议选择最新的版本
+#tar -zxvf keepalived-1.1.15.tar.gz
+#cd keepalived-1.1.15
+#./configure --prefix=/  --mandir=/usr/local/share/man/ --with-kernel-dir=/usr/src/linux/
+Keepalived version       : 1.1.15
+Compiler                 : gcc
+Compiler flags           : -g -O2
+Extra Lib                : -lpopt -lssl -lcrypto
+Use IPVS Framework       : Yes
+IPVS sync daemon support : Yes
+Use VRRP Framework       : Yes
+Use LinkWatch            : No
+Use Debug flags          : Nod
+看见如上输入，注意yes和no的值，如果一样，证明配置成功，如果lvs为no，那么证明你的lvs没有安装成功，需要从新安装lvs再安装keepalived。
+
+#make && make install
+如果没有报错，那么就安装成功了，检查一下是否生成了keepalived命令。
+
+三、LVS VS/DR模式搭建
+环境介绍 
+主机IP 角色 安装软件
+122.225.32.134 Lvs+keepalivedMASTER Ipvsadm、keepalived
+
+122.225.32.135 Lvs+keepalivedBACKUP Ipvsadm、keepalived
+
+122.225.32.136 Realserver Lvs_real脚本
+
+122.225.32.137 Real server Lvs_real脚本
+
+122.225.32.142 VIP
+注意：所有机器都在一个交换机，并且在一个网段。
+
+1、在134和135上安装ipvsadm和keepalived软件。
+
+2、修改keepalived的配置文件
+
+122.225.32.134：
+
+# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+   notification_email {
+     lr@isadba.com
+   }
+   notification_email_from lvs@isadba.com
+   smtp_server 127.0.0.1
+   smtp_connect_timeout 30
+   router_id LVS_DEVEL
+}
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        122.225.32.142
+    }
+}
+virtual_server 122.225.32.142 80 {
+    delay_loop 6
+    lb_algo rr
+    lb_kind DR
+    nat_mask 255.255.255.0
+    persistence_timeout 0             //此值为0，主要是为了方便测试，每次刷新页面结果会不一样
+    protocol TCP
+    real_server 122.225.32.136 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server 122.225.32.137 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+ 
+
+122.225.32.135：
+
+和122.225.32.134相比，值需要删除state MASTER 和 修改priority的值小于master的。
+
+real server：
+
+在所有real server上添加下面脚本，名执行# cat  /sbin/lvs_real
+
+#!/bin/bash
+#description:start realserver
+vip=122.225.32.142
+source /etc/rc.d/init.d/functions
+case $1 in
+start)
+        echo "Start Realserver"
+        /sbin/ifconfig lo:0 $vip broadcast $vip netmask 255.255.255.255 up
+        echo "1" > /proc/sys/net/ipv4/conf/lo/arp_ignore
+        echo "2" > /proc/sys/net/ipv4/conf/lo/arp_announce
+        echo "1" > /proc/sys/net/ipv4/conf/all/arp_ignore
+        echo "2" > /proc/sys/net/ipv4/conf/all/arp_announce
+;;
+stop)
+        echo "Stop Realserver"
+        /sbin/ifconfig lo:0 down
+        echo "0" > /proc/sys/net/ipv4/conf/lo/arp_ignore
+        echo "0" > /proc/sys/net/ipv4/conf/lo/arp_announce
+        echo "0" > /proc/sys/net/ipv4/conf/all/arp_ignore
+        echo "0" > /proc/sys/net/ipv4/conf/all/arp_announce
+;;
+*)
+        echo "Usage: $0 (start | stop)"
+exit 1
+esac
+执行脚本以后，使用ip add命令查看lo接口是否添加了虚拟ip地址。
+
+当然，real server上面需要安装http服务，并启动，在index.html里面添加自己的IP地址，方便客户端访问时候辨别访问的是哪个主机。
+
+3、配置完成以后，开始测试：
+
+在122.225.32.134和122.225.32.135上使用ip add检查，虚拟IP应该配置在134上面。
+
+测试1{主要测试lvs}：访问虚拟IP是否可以访问真实服务器，是否轮询real server
+
+在master上使用 ipvsadm命令查看lvs状态。
+
+# ipvsadm
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  122.225.32.142:http rr
+  -> 122.225.32.137:http          Route   1      0          0        
+  -> 122.225.32.136:http          Route   1      0          0
+在客户端访问虚拟IP 122.225.32.142，看是否可以访问。每次刷新，应该会换一个real server。访问数次后，通过ipvsadm观察lvs状态。
+
+# ipvsadm
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  122.225.32.142:http rr
+  -> 122.225.32.137:http          Route   1      0          6        
+  -> 122.225.32.136:http          Route   1      0          6
+测试2{主要测试keepalived}：lvs服务器的HA，当keepalived master挂掉后，keepalived backup会不会接管虚拟IP。
+
+关闭master主机上的keepalived进程。
+
+在backup上ip add查看是否添加虚拟IP，通过/var/log/message查看相关转换日志。
+
+ 
+
+测试3{测试backup的lvs}：使用客户端访问现在虚拟ip，查看是否一切正常
+
+      测试完成后，开启master的keepalived进程，等虚拟ip转移到master以后，在从客户端访问，查看是否存在问题。
+
+四、LVS VS/TUN模式搭建
+
+主机IP 角色 安装软件
+
+122.225.32.134 Lvs+keepalivedMASTER Ipvsadm、keepalived
+
+122.225.32.135 Lvs+keepalivedBACKUP Ipvsadm、keepalived
+
+122.225.32.155 Realserver
+
+122.225.32.156 Real server
+
+122.225.32.142 VIP
+
+注意：虚拟ip，master和backup在同意网段和交换机，realserver在不同网段，但是同属于外网IP
+
+1、在134和135上安装ipvsadm和keepalived软件。
+
+2、修改keepalived的配置文件
+
+122.225.32.134：
+
+ # cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+   notification_email {
+     lr@isadba.com
+   }
+   notification_email_from lvs@isadba.com
+   smtp_server 127.0.0.1
+   smtp_connect_timeout 30
+   router_id LVS_DEVEL
+}
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        122.225.32.142
+    }
+}
+virtual_server 122.225.32.142 80 {
+    delay_loop 6
+    lb_algo rr
+    lb_kind TUN
+    nat_mask 255.255.255.0
+    persistence_timeout 0
+    protocol TCP
+    real_server 122.225.32.155 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server 122.225.32.156 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+ 
+
+122.225.32.135：
+
+和122.225.32.134相比，值需要删除state MASTER 和 修改priority的值小于master的。
+
+ 
+
+real server：
+
+在所有real server上添加下面脚本，名执行。
+
+# cat /sbin/lvs_real_tun
+#!/bin/sh
+# description: Config realserver tunl port and apply arp patch
+VIP=122.225.32.142
+. /etc/rc.d/init.d/functions
+case $1 in
+start)
+echo "Tunl port starting"
+ifconfig tunl0 $VIP netmask 255.255.255.255 broadcast $VIP up
+/sbin/route add -host $VIP dev tunl0
+echo "1" > /proc/sys/net/ipv4/conf/tunl0/arp_ignore
+echo "2" > /proc/sys/net/ipv4/conf/tunl0/arp_announce
+echo "1" > /proc/sys/net/ipv4/conf/all/arp_ignore
+echo "2" > /proc/sys/net/ipv4/conf/all/arp_announce
+sysctl -p
+;;
+stop)
+echo "Tunl port closing"
+ifconfig tunl0 down
+echo "1" > /proc/sys/net/ipv4/ip_forward
+echo "0" > /proc/sys/net/ipv4/conf/all/arp_announce
+;;
+*)
+echo "Usage: $0" {start|stop}
+exit 1
+esac
+3、配置完成以后，开始测试：
+
+测试方法和DR方法一样。
+
+ 
+
+五、LVS VS/NAT模式搭建
+
+主机IP 角色 安装软件
+
+122.225.32.134 Lvs+keepalivedMASTER Ipvsadm、keepalived
+122.225.32.135 Lvs+keepalivedBACKUP Ipvsadm、keepalived
+10.1.1.9 Real server Lvs_real脚本
+10.1.1.10 Real server Lvs_real脚本
+122.225.32.142 VIP、eth0 外网虚拟IP
+10.1.1.118 VIP、eth1 内网虚拟IP
+
+注意：所有机器都在一个交换机，并且在一个网段，LVS服务器端最好开启数据包转发net.ipv4.ip_forward。
+
+1、在134和135上安装ipvsadm和keepalived软件。
+
+2、修改keepalived的配置文件
+
+注意：这里由于需要内外网IP的同时漂移，所以需要用到vrrp同步组，并且需要同时开启两个vrrp实例。
+
+122.225.32.134：
+
+经过上面的配置，大家应该比较熟悉了，相对于TUN和DR模式，NAT的配置文件主需要做一下修改。
+
+! Configuration File for keepalived
+global_defs {
+   notification_email {
+     lr@isadba.com
+   }
+   notification_email_from lvs@isadba.com
+   smtp_server 127.0.0.1
+   smtp_connect_timeout 30
+   router_id LVS_DEVEL
+}
+vrrp_sync_group G1 {
+  group {
+    VI_1
+    VI_2
+  }
+}
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        122.225.32.142
+    }
+}
+vrrp_instance VI_2 {
+    state MASTER
+    interface eth1
+    virtual_router_id 51
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        10.1.1.118
+    }
+}
+virtual_server 122.225.32.142 80 {
+    delay_loop 6
+    lb_algo rr
+    lb_kind NAT
+    nat_mask 255.255.255.0
+    persistence_timeout 0
+    protocol TCP
+    real_server 10.1.1.251 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+    real_server 10.1.1.8 80{
+        weight 1
+        TCP_CHECK {
+            connect_port    80
+            connect_timeout 3
+            nb_get_retry 3
+            delay_before_retry 3
+        }
+    }
+}
+122.225.32.135：
+
+和122.225.32.134相比，值需要删除state MASTER 和 修改priority的值小于master的。
+
+real server：
+
+10.1.1.9和10.1.1.10的网关需要指定的lvs的内网虚拟IP也就是10.1.1.118，不需要其他设置。
+
+ 
+
+六、keepalived多种real server健康检测实例
+keepalived对lvs的real server检测方式主要有以下几种，HTTP_GET,SSL_GET,TCP_CHECK,SMTP_CHECK,MISC_CHECK.
+
+其中TCP_CHECK是最常用的方式，一般内容在keepalived手册中都可以查到，值得提一下的就是关于digest和genhash的用法。
+
+HTTP_GET | SSL_GET {
+url {
+path /
+digest <string> ##genssh工具算出的。
+status_code 200
+}
+connect_port 80
+bindto <IPADD>
+connect_timeout 10
+nb_get_retry 3
+delay_before_retry 2
+}
+ 
+
+这里需要注意的就是digest的值如何算，一般在安装keepalived后，会生成一个genhash的工具。
+
+可以使用
+
+#genhash -h 查看帮助
+
+常见的使用方法如下
+
+# genhash  -s 10.1.1.8 -p 80 -u index.html 如果你是ssl连接，需要加 -S 参数，算出的值贴到配置文件中就可以了。
