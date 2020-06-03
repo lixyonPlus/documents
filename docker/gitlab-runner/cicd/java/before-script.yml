@@ -1,0 +1,36 @@
+.function: &function |
+  function maven_build() {
+    echo "maven build"
+    mvn clean package -U -Dmaven.test.skip=true
+  }
+  function gradle_build() {
+    echo "gradle build"
+  }
+  function download_docker_files() {
+    echo "download Dockerfile"
+    echo "download entrypoint.sh"
+  }
+  function docker_build() {
+    echo "[start] get docker args"
+    docker build --build-arg JAR_PATH=${JAR_PATH} --build-arg JAR_FILE=${JAR_FILE} --no-cache -t ${DOCKER_IMAGE} .
+    docker push ${DOCKER_IMAGE}
+    echo "[end] done"
+  }
+  function download_ansible_roles() {
+    echo "download site.yml"
+    echo "download ansible roles.tgz"
+  }
+  function notice() {
+    # 通知
+    msg="${message:-'太懒了，什么都没留下'}"
+    curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=企业微信机器人' \
+      -H 'Content-Type: application/json' \
+      -d "{
+        \"msgtype\": \"text\",
+        \"text\": {
+          \"content\": \"${msg}\"
+        }
+      }"
+    }
+before_script:
+  - *function

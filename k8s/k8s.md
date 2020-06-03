@@ -91,3 +91,7 @@ kubectl api-resources --namespaced=false
 > kubectl cordon $NODENAME
 
 ### 请注意，被 daemonSet 控制器创建的 pods 将忽略 Kubernetes 调度器，且不会遵照节点上不可调度的属性。这个假设基于守护程序属于节点机器，即使在准备重启而隔离应用的时候。
+
+### Kubernetes 调度器保证一个节点上有足够的资源供其上的所有 pods 使用。它会检查节点上所有容器要求的总和不会超过节点的容量。这包括由 kubelet 启动的所有容器，但不包括由 container runtime 直接启动的容器，也不包括在容器外部运行的任何进程。
+
+### 在某个路径下的多个子路径中组织资源，那么也可以递归地在所有子路径上执行操作，方法是在 --filename,-f 后面指定 --recursive 或者 -R。

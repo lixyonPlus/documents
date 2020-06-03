@@ -1,0 +1,17 @@
+variables:
+# CI_DEBUG_TRACE: "true"
+build-maven-docker:
+  image: maven:3.6.3-jdk-${JDK_VERSION}
+  stage: build
+  tags:
+    - build
+  script:
+    - echo "maven build"
+    - maven_build
+    - echo "docker build"
+    - download_docker_files
+    - docker_build
+    - echo "DONE"
+  only:
+    variables:
+      - $YPSX_STAGE == "BUILD"

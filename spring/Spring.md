@@ -120,3 +120,6 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
   - 修改pom文件配置war格式。
 
 ### SpringBootApplication包含@SpringBootConfiguration、@EnableAutoConfiguration、@ComponentScann
+
+
+### AbstractBeanFactoryAwareAdvisingPostProcessor 方法级验证，注解验证基于此实现

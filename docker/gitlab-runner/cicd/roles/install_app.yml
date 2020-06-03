@@ -1,0 +1,27 @@
+- name: stop app service
+  script: stop_app.sh {{ ansible_default_ipv4['address'] }} # 优雅关闭应用服务
+- name: check app service is stop
+  script: check_app.sh {{ ansible_default_ipv4['address'] }} fail 4
+- name: remove app docker container
+  docker_container:
+    name: "{{ APP_NAME }}"
+    state: absent
+- name: start app docker container
+  docker_container:
+    name: "{{ APP_NAME }}"
+    image: "{{ DOCKER_IMAGE }}"
+    state: started
+    pull: yes
+    user: admin
+    network_mode: host
+    log_driver: 'json-file'
+    log_options:
+      max-size: 500m
+    env:
+      SPRING_PROFILES_ACTIVE: "{{ SPRING_PROFILES_ACTIVE }}"
+      APP_NAME: "{{ APP_NAME }}"
+      JAR_FILE: "{{ JAR_FILE }}"
+    volumes:
+    - /etc/localtime:/etc/localtime
+- name: check app service is started
+  script: check_app.sh "{{ ansible_default_ipv4['address'] }}" succ 20

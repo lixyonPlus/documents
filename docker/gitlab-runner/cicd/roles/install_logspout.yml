@@ -1,0 +1,16 @@
+- name: install logspout
+  docker_container:
+    name: logspout
+    image: gliderlabs/logspout:v3.2.11
+    state: started
+    restart_policy: always
+    log_driver: 'json-file'
+    log_options:
+      max-size: 500m
+    env:
+      EXCLUDE_LABEL: logspout.exclude
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+    - 18000:80
+

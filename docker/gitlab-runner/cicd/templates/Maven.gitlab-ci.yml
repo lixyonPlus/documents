@@ -1,0 +1,8 @@
+stages:
+  - build
+  - deploy
+
+include:
+  - local: /java/.before-script.yml
+  - local: /java/maven_build.yml
+  - local: /java/deploy.yml

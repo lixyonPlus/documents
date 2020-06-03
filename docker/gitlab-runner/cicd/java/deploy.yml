@@ -1,0 +1,14 @@
+ansible_deploy:
+  image: ansible:2.9.7
+  stage: deploy
+  tags: deploy
+  only:
+    variables:
+      - $YPSX_STAGE == "DEPLOY"
+  script:
+    - notice # 通知： 谁发布[线上]应用名
+    - download_ansible_roles # 在.before-script.yml声明
+    - echo "$SSH_PRIVATE_KEY" >> ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ansible-playbook -i /etc/ansible/${ENV}_hosts -e hosts=${APP_NAME} -e DOCKER_IMAGE=${DOCKER_IMAGE} -e APP_NAME=${APP_NAME} \
+      -e JAR_FILE=${JAR_FILE} -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -t java site.yaml

@@ -1,0 +1,4 @@
+include:
+  - project: "z_qz/cicd" # CICD项目
+    ref: master # 分支
+    file: /templates/Maven.gitlab-ci.yml # 导入模板文件
