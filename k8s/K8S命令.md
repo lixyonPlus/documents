@@ -36,4 +36,12 @@
 ### --force 删除并重新创建资源
 > kubectl replace -f https://k8s.io/examples/application/nginx/nginx-deployment.yaml --force
 
-### 
+### 想要 node 名称
+> nodes=$(kubectl get nodes -o jsonpath='{range.items[*].metadata}{.name} {end}')
+
+
+### 想要 node IP 
+> nodes=$(kubectl get nodes -o jsonpath='{range .items[*].status.addresses[?(@.type=="ExternalIP")]}{.address} {end}')
+
+### 使用 Docker Config 创建 Secret
+> kubectl create secret docker-registry <name> --docker-server=DOCKER_REGISTRY_SERVER --docker-username=DOCKER_USER --docker-password=DOCKER_PASSWORD --docker-email=DOCKER_EMAIL

@@ -105,3 +105,11 @@ MinAge 是容器可以被执行垃圾回收的最小生命周期。MaxPerPodCont
 Kubelet 将处理无法辨识的、已删除的以及超出前面提到的参数所设置范围的容器。最老的容器通常会先被移除。 MaxPerPodContainer 和 MaxContainer 在某些场景下可能会存在冲突，例如在保证每个 pod 内死亡容器的最大数量（MaxPerPodContainer）的条件下可能会超过允许存在的全部死亡容器的最大数量（MaxContainer）。 MaxPerPodContainer 在这种情况下会被进行调整：最坏的情况是将 MaxPerPodContainer 降级为 1，并驱逐最老的容器。 此外，pod 内已经被删除的容器一旦年龄超过 MinAge 就会被清理。
 不被 kubelet 管理的容器不受容器垃圾回收的约束。
 
+### 镜像拉取策略
+> Always、IfNotPresent(默认)、Never
+
+### 总是拉取镜像
+> 设置容器的 imagePullPolicy 为 Always。
+> 省略 imagePullPolicy，并使用 :latest 作为要使用的镜像的标签。
+> 省略 imagePullPolicy 和要使用的镜像标签。
+> 启用 AlwaysPullImages 准入控制器（admission controller）。
