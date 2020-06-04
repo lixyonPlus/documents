@@ -12,4 +12,28 @@
 ### 在project/k8s/development目录下递归创建服务(--recursive)
 > kubectl apply -f project/k8s/development --recursive
 
-### kubectl label pods -l app=nginx tier=fe
+### 将所有标签值为nginx的pod标记为前端层tier=fe
+> kubectl label pods -l app=nginx tier=fe
+
+### 查看标记的pods
+> kubectl get pods -l app=nginx -L tier
+
+### 将pod为my-nginx-v4-9gw19的添加注解
+> kubectl annotate pods my-nginx-v4-9gw19 description='my frontend running nginx'
+
+### 查看pod
+> kubectl get pods my-nginx-v4-9gw19 -o yaml
+
+### 将nginx副本的数量从3减少到1
+> kubectl scale deployment/my-nginx --replicas=1
+
+### 让系统自动选择需要 nginx 副本的数量，范围从 1 到 3，请执行以下操作：
+> kubectl autoscale deployment/my-nginx --min=1 --max=3
+
+### 使用edit更新资源（这相当于首先get资源，在文本编辑器中编辑它，然后用更新的版本apply资源）
+> kubectl edit deployment/my-nginx
+
+### --force 删除并重新创建资源
+> kubectl replace -f https://k8s.io/examples/application/nginx/nginx-deployment.yaml --force
+
+### 

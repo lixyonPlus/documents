@@ -95,3 +95,13 @@ kubectl api-resources --namespaced=false
 ### Kubernetes 调度器保证一个节点上有足够的资源供其上的所有 pods 使用。它会检查节点上所有容器要求的总和不会超过节点的容量。这包括由 kubelet 启动的所有容器，但不包括由 container runtime 直接启动的容器，也不包括在容器外部运行的任何进程。
 
 ### 在某个路径下的多个子路径中组织资源，那么也可以递归地在所有子路径上执行操作，方法是在 --filename,-f 后面指定 --recursive 或者 -R。
+
+### Kubelet 将每分钟对容器执行一次垃圾回收，每五分钟对镜像执行一次垃圾回收。
+> 磁盘使用率超过上限阈值（HighThresholdPercent）将触发垃圾回收。
+> 垃圾回收将删除最近最少使用的镜像，直到磁盘使用率满足下限阈值（LowThresholdPercent）。
+
+### 容器垃圾回收策略考虑三个用户定义变量。
+MinAge 是容器可以被执行垃圾回收的最小生命周期。MaxPerPodContainer 是每个 pod 内允许存在的死亡容器的最大数量。 MaxContainers 是全部死亡容器的最大数量。可以分别独立地通过将 MinAge 设置为 0，以及将 MaxPerPodContainer 和 MaxContainers 设置为小于 0 来禁用这些变量。
+Kubelet 将处理无法辨识的、已删除的以及超出前面提到的参数所设置范围的容器。最老的容器通常会先被移除。 MaxPerPodContainer 和 MaxContainer 在某些场景下可能会存在冲突，例如在保证每个 pod 内死亡容器的最大数量（MaxPerPodContainer）的条件下可能会超过允许存在的全部死亡容器的最大数量（MaxContainer）。 MaxPerPodContainer 在这种情况下会被进行调整：最坏的情况是将 MaxPerPodContainer 降级为 1，并驱逐最老的容器。 此外，pod 内已经被删除的容器一旦年龄超过 MinAge 就会被清理。
+不被 kubelet 管理的容器不受容器垃圾回收的约束。
+
