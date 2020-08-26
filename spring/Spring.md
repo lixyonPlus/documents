@@ -73,15 +73,19 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 ### 在 Spring Boot 启动的时候运行一些特定的代码？
  - 可以实现接口 ApplicationRunner 或者 CommandLineRunner，这两个接口实现方式一样，它们都只提供了一个 run 方法。
 
+### SmartInitializingSingleton是所有单例的bean初始化完成之后执行的回调方法。
+
 ### @Autowired注解原理：
  - 注解解析器：AutowiredAnnotationBeanPostProcessor
  - 1.Spring容器启动时，AutowiredAnnotationBeanPostProcessor被注册到容器；
  - 2.扫描代码，如果带有@Autowired注解，（扫描当前类中标注@Autowired的属性和方法；再查找父类中注@Autowired的属性和方法，依次遍历；）则将依赖注入信息封装到InjectionMetadata中（见扫描过程）；
  - 3.创建bean时（实例化对象和初始化），会调用各种BeanPostProcessor对bean初始化，AutowiredAnnotationBeanPostProcessor负责将相关的依赖注入进来
+ 
+### @Autowired注入对象顺序: 按类型找->通过限定符@Qualifier过滤->@Primary->@Priority->根据名称找（字段名称或者方法名称）
+### @Resource注入对象顺序: 按名称（字段名称、方法名称、set属性名称）找->按类型找->通过限定符@Qualifier过滤
 
-### @Bean和@Configuration
-当@Bean方法在没有使用@Configuration注解的类中声明时称之为lite @Bean mode，不会被动态代理
-否则称为full @Bean mode，会被动态代理
+
+### 当@Bean方法在没有使用@Configuration注解的类中声明时称之为lite @Bean mode，不会被动态代理,否则称为full @Bean mode，会被动态代理
 
 ### 被CGLIB的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能不能被声明为private和final，不然在启动时Spring会直接报错。
 
@@ -123,3 +127,7 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 
 
 ### AbstractBeanFactoryAwareAdvisingPostProcessor 方法级验证，注解验证基于此实现
+
+### spring父子容器
+  - 通常我们使用springmvc的时候，采用3层结构，controller层，service层，dao层；父容器中会包含dao层和service层，而子容器中包含的只有controller层；这2个容器组成了父子容器的关系，controller层通常会注入service层的bean。采用父子容器可以避免有些人在service层去注入controller层的bean，导致整个依赖层次是比较混乱的。父容器和子容器的需求也是不一样的，比如父容器中需要有事务的支持，会注入一些支持事务的扩展组件，而子容器中controller完全用不到这些，对这些并不关心，子容器中需要注入一下springmvc相关的bean，而这些bean父容器中同样是不会用到的，也是不关心一些东西，将这些相互不关心的东西隔开，可以有效的避免一些不必要的错误，而父子容器加载的速度也会快一些。
+  - 子容器可以访问父容器中bean，父容器无法访问子容器中的bean
