@@ -332,7 +332,19 @@ GET _template/temp*
 GET _template/temp1,temp2   
 ###  删除模板
 DELETE _template/template_name
-### 创建模版
+
+# Index Template
+  ndex Templates 帮助你设定 Mapping 和 Settings，并按照一定的规则，自动匹配到新创建的索引之上
+  模板仅在一个索引被新创建时，才会产生作用。修改模板不会影响已创建的索引
+  可以设定多个索引模板，这些设置会被 merge 在一起
+  可以指定 order 的数值，控制 merging 的过程
+  当一个索引被新创建时
+  应用Elasticsearch默认的 settings 和 mappings
+  先应用order值低的IndexTemplate中的设定
+  再应用order值高的IndexTemplate中的设定，之前的设定会被覆盖
+  应用创建索引时，用户所指定的Settings和Mappings，并覆盖之前模板中的设定
+
+### 创建索引模版
 PUT /_template/template_name
 {
     "index_patterns" : ["test*"], //匹配前缀
@@ -347,10 +359,53 @@ PUT /_template/template_name
     }
 }
 
+### Dynamic Template
+匹配条件： match_mapping_type，match，match_pattern，unmatch，path_match，path_unmatch
 
+### 自定义dynamic_templates(动态映射)模板,将is开头的string类型的字段类型设置为boolean，将string类型设置为keyword
+PUT _index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "strings_as_boolean": { //名称
+          "match_mapping_type": "string", //匹配条件
+          "match": "is*",
+          "mapping": {
+            "type": "boolean" //映射结果
+          }
+        }
+      },
+      {
+        "strings_as_keywords": { //名称
+          "match_mapping_type": "string", //匹配条件
+          "mapping": {
+            "type": "keyword" //映射结果
+          }
+        }
+      }
+    ]
+  }
+}
 
-
-
+### 自定义dynamic_templates(动态映射)模板，将name开头的字段类型转换为text并添加到copy_to中，互忽略middle结尾的字段
+PUT _index
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "full_name": {
+          "path_match": "name.*",
+          "path_unmatch": "*.middle",
+          "mapping": {
+            "type": "text",
+            "copy_to": "full_name"
+          }
+        }
+      }
+    ]
+  }
+}
 
 
 
@@ -485,3 +540,74 @@ POST _index/_search
 ### 通过在设置mapping的时候设置copy_to为fullName，实现以下查询，copy_to 的目标字段不出现在_source 中
 GET _index/_search?q=fullName:(www com)
 
+# 聚合查询
+
+### 按照DestCountry的值进行分桶统计
+GET kibana_sample_data_flights/_search
+{
+	"size": 0, //不返回记录
+	"aggs":{ //聚合
+		"flight_dest":{ //自定义名称
+			"terms":{ //分词
+				"field":"DestCountry" //按照字段DestCountry，进行分桶统计
+			}
+		}
+	}
+}
+
+#### 按照DestCountry的值进行分桶统计并根据AvgTicketPrice计算平均价格/最高价格/最低价格
+GET kibana_sample_data_flights/_search
+{
+	"size": 0, //不反悔记录
+	"aggs":{
+		"flight_dest":{ //自定义返回字段名
+			"terms":{
+				"field":"DestCountry" //分桶字段
+			},
+			"aggs":{
+				"avg_price":{ //自定义返回字段名
+					"avg":{ //计算符
+						"field":"AvgTicketPrice" //计算字段
+					}
+				},
+				"max_price":{ //自定义返回字段名
+					"max":{ //计算符
+						"field":"AvgTicketPrice" //计算字段
+					}
+				},
+				"min_price":{ //自定义返回字段名
+					"min":{ //计算符
+						"field":"AvgTicketPrice" //计算字段
+					}
+				}
+			}
+		}
+	}
+}
+
+#### 按照DestCountry的值进行分桶统计并根据DestWeather分词统计不同的天气，根据AvgTicketPrice统计不同维度的价格
+GET kibana_sample_data_flights/_search
+{
+	"size": 0,
+	"aggs":{
+		"flight_dest":{
+			"terms":{
+				"field":"DestCountry"
+			},
+			"aggs":{
+				"stats_price":{
+					"stats":{
+						"field":"AvgTicketPrice"
+					}
+				},
+				"wather":{
+				  "terms": {
+				    "field": "DestWeather",
+				    "size": 5
+				  }
+				}
+
+			}
+		}
+	}
+}
