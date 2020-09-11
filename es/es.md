@@ -360,6 +360,7 @@ PUT /_template/template_name
 }
 
 ### Dynamic Template
+在具体的索引上指定规则，为新增的字段指定mappings
 匹配条件： match_mapping_type，match，match_pattern，unmatch，path_match，path_unmatch
 
 ### 自定义dynamic_templates(动态映射)模板,将is开头的string类型的字段类型设置为boolean，将string类型设置为keyword
@@ -424,7 +425,9 @@ PUT _index
   字段类查询：如term、match、range等，只针对某一字段进行查询
   复合查询：如bool查询等，包含一个或多个字段类查询或者复合查询语句
   
-
+ ### 问题 
+  - match和match_phrase的区别：match中的term是or关系，match_phrase是and关系，且term之间位置也会影响结果
+  - 可以为text类型的字段设置Not Indexed使其无法被搜索
 
 
 ### url添加ignore_unavailable=true忽略不存在的索引
@@ -585,7 +588,7 @@ GET kibana_sample_data_flights/_search
 	}
 }
 
-#### 按照DestCountry的值进行分桶统计并根据DestWeather分词统计不同的天气，根据AvgTicketPrice统计不同维度的价格
+###嵌套查询，按照DestCountry的值进行分桶统计并根据DestWeather分词统计不同的天气，根据AvgTicketPrice统计不同维度的价格
 GET kibana_sample_data_flights/_search
 {
 	"size": 0,
@@ -606,7 +609,6 @@ GET kibana_sample_data_flights/_search
 				    "size": 5
 				  }
 				}
-
 			}
 		}
 	}
