@@ -54,11 +54,11 @@ GET /_cluster/settings?include_defaults=true
 POST _index/_doc
 {
 	"user" : "Mike",
-    "post_date" : "2019-04-15T14:12:12",
-    "message" : "trying out Kibana"
+  "post_date" : "2019-04-15T14:12:12",
+  "message" : "trying out Kibana"
 }
 
-### 创建文档指定Id，如果id已经存在，报错
+### 创建文档指定Id，如果op_type=create时且id已存在，报错
 PUT _index/_doc/1?op_type=create/index
 {
     "user" : "Jack",
@@ -66,10 +66,13 @@ PUT _index/_doc/1?op_type=create/index
     "message" : "trying out Elasticsearch"
 }
 
+### index和create区别
+  - index时会检查_version。如果插入时没有指定_version，那对于已有的doc，_version会递增，并对文档覆盖。插入时如果指定_version，如果与已有的文档_version不相等，则插入失败，如果相等则覆盖，_version递增。
+
 ### 创建文档指定Id，如果id已经存在，报错
 PUT _index/_create/1
 {
-     "user" : "Jack",
+    "user" : "Jack",
     "post_date" : "2019-05-15T14:12:12",
     "message" : "trying out Elasticsearch"
 }
@@ -81,6 +84,10 @@ POST _index/_update/1
         "message" : "trying out Elasticsearch"
     }
 }
+
+### update
+ - 由于Lucene中的update其实就是覆盖替换，并不支持针对特定Field进行修改，Elasticsearch中的update为了实现针对特定字段修改，在Lucene的基础上做了一些改动。每次update都会调用 InternalEngine 中的get方法，来获取整个文档信息，从而实现针对特定字段进行修改，这也就导致了每次更新要获取一遍原始文档，性能上会有很大影响。所以根据使用场景，有时候使用index会比update好很多。
+
 
 ### 更新指定id的文档.(存在：先删除，在写入，不存在：直接写入)
 PUT _index/_doc/1
@@ -101,15 +108,15 @@ POST _bulk
 { "update" : {"_id" : "1", "_index" : "test"} }
 { "doc" : {"field2" : "value2"} }
 
-### 通过id查询文档
-GET _index/_doc/1
-
 ### url search
   q: 指定查询语句，语法为 Query String Syntax
   df: q中不指定字段时默认查询的字段，如果不指定，es会查询所有字段(泛查询)
   sort：排序
   timeout：指定超时时间，默认不超时
   from,size：用于分页
+
+### 通过id查询文档
+GET _index/_doc/1
 
 ### 根据指定的字段内容查询文档
 GET _index/_search?q=field:value
@@ -333,6 +340,35 @@ GET _template/temp1,temp2
 ###  删除模板
 DELETE _template/template_name
 
+### 为索引建立别名
+POST _aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "old_index_name", 
+        "alias": "alias"
+      }
+    }
+  ]
+}
+### 为索引删除别名1
+POST /_aliases
+{
+  "actions": [
+    {
+      "remove": {
+        "index": "old_index_name", 
+        "alias": "alias"
+      }
+    }
+  ]
+}
+
+### 为索引删除别名2
+DELETE _index/_alias/alias
+
+
 # Index Template
   ndex Templates 帮助你设定 Mapping 和 Settings，并按照一定的规则，自动匹配到新创建的索引之上
   模板仅在一个索引被新创建时，才会产生作用。修改模板不会影响已创建的索引
@@ -429,7 +465,6 @@ PUT _index
   - match和match_phrase的区别：match中的term是or关系，match_phrase是and关系，且term之间位置也会影响结果
   - 可以为text类型的字段设置Not Indexed使其无法被搜索
 
-
 ### url添加ignore_unavailable=true忽略不存在的索引
 POST _index,404_idx/_search?ignore_unavailable=true
 {
@@ -438,6 +473,11 @@ POST _index,404_idx/_search?ignore_unavailable=true
 		"match_all": {}
 	}
 }
+
+### 基于全文本的查询
+基于全文本的查找：Match Query / Match Phrase Query / Query String Query
+特点：索引和搜索时会进行分词，查询字符串先传递到一个合适的分词器，然后生成一个供查询的词项列表
+查询时候，先会对输入的查询进行分词。然后每个词项逐个进行底层的查询，最终将结果进行合并。并未每个文档生成一个算分。 例如查 “Martix reloaded”, 会查到包括 Matrix 或者 reload 的所有结果。
 
 # 模糊匹配查询
 POST _index/_search
@@ -450,9 +490,43 @@ POST _index/_search
     "match": {
       "query": "value",
       "operator": "and/or"
+      “minimum_should_match“：1  //当operator参数设置为or时，用来控制应该匹配的分词的最少数量
     }
   }
 }
+### 基于 Term 的查询
+Term的重要性：Term 是表达语意的最小单位。搜索和利用统计语言模型进行自然语言处理都需要处理 Term
+特点 ：Term Level Query：Term Query / Range Query / Exists Query / Prefix Query / Wildcard Query
+在 ES 中，Term 查询，对输入不做分词。会将输入作为一个整体，在倒排索引中查找准确的词项，并且使用相关度算分公式为每个包含该词项的文档进行相关度算分 - 例如 “Apple Store”，可以通过 Constant Score 将查询转换换成一个 Filtering，避免算分，并利用缓存，提交性能
+
+- position_increment_gap是距离查询时，最大允许查询的距离，默认是100
+
+### term查询1，会对desc做分词
+POST /products/_search
+{
+  "query": {
+    "term": {
+      "desc": {
+        "value": "iphone"
+      }
+    }
+  }
+}
+
+### term查询2，不会对desc.keyword的输入内容做分词
+POST /products/_search
+{
+  "query": {
+    "term": {
+      "desc.keywork": {
+        "value": "iphone"
+      }
+    }
+  }
+}
+
+
+
 
 # phrase查询
 POST _index/_search
@@ -479,6 +553,38 @@ POST _index/_search
     }
   }
 } 
+
+### 复合查询1 - Constant Score 转为 Filter，没有算分
+POST /products/_search
+{
+  "explain": true,
+  "query": {
+    "constant_score": {
+      "filter": {
+        "term": {
+          "productID.keyword": "XHDK-A-1293-#fJ3"
+        }
+      }
+    }
+  }
+}
+
+### 复合查询2 - Constant Score 转为 Filter，没有算分
+POST products/_search
+{
+"query": {
+  "constant_score": {
+    "filter": {
+      "range": {
+        "date": {
+           "gte": "now-1y"  //当前时间减1年
+        }
+      }
+    }
+  }
+}
+}
+
 
 ### 使用query_string多字段查询，7.0版本中query使用+-|无效
 POST _index/_search
@@ -526,6 +632,10 @@ GET _index/_search
   }
 }
 
+### bool查询
+bool查询是组合叶子查询或复合查询子句的默认查询方式,如must,should,must_not或者filter子句;must与should子句查询最终分数由两个子句各自匹配分数相加得到,而must_not与filter子句需要在过滤查询中执行;bool查询底层由Lucene中的BooleanQuery类实现,该查询由一个或多个布尔子句组成,每个子句由特定类型声明;
+
+
 ### 查询字段为null的记录
 POST _index/_search
 {
@@ -538,6 +648,20 @@ POST _index/_search
       }
     }
   }
+}
+
+### 查询字段非null的记录
+POST _index/_search
+{
+    "query" : {
+        "constant_score" : {
+            "filter" : {
+                "exists": {
+                    "field":"fieldName"
+                }
+            }
+        }
+    }
 }
 
 ### 通过在设置mapping的时候设置copy_to为fullName，实现以下查询，copy_to 的目标字段不出现在_source 中
@@ -588,7 +712,7 @@ GET kibana_sample_data_flights/_search
 	}
 }
 
-###嵌套查询，按照DestCountry的值进行分桶统计并根据DestWeather分词统计不同的天气，根据AvgTicketPrice统计不同维度的价格
+### 嵌套查询，按照DestCountry的值进行分桶统计并根据DestWeather分词统计不同的天气，根据AvgTicketPrice统计不同维度的价格
 GET kibana_sample_data_flights/_search
 {
 	"size": 0,
@@ -612,4 +736,154 @@ GET kibana_sample_data_flights/_search
 			}
 		}
 	}
+}
+
+### boosting查询
+返回匹配positive查询的文档并降低匹配negative查询的文档相似度分;
+这样可以在不排除某些文档的前提下对文档进行查询,搜索结果中存在只不过相似度分数相比正常匹配的要低;
+POST _index/_search
+{
+    "query": {
+        "boosting" : {
+            "positive" : {
+                "term" : {
+                    "content" : "elasticsearch"
+                }
+            },
+            "negative" : {
+                 "term" : {
+                     "content" : "like"
+                }
+            },
+            "negative_boost" : 2
+        }
+    }
+}
+
+### 基于内容的推荐查询,通常是给定一篇文档信息，然后给用户推荐与该文档相识的文档。Lucene的api中有实现查询文章相似度的接口，叫MoreLikeThis。Elasticsearch封装了该接口，通过Elasticsearch的More like this查询接口，我们可以非常方便的实现基于内容的推荐。
+| 关键字                 | 描述                                                                   |
+| ---------------------- | ---------------------------------------------------------------------- |
+| fields                 | 要匹配的字段，如果不填的话默认是_all字段                               |
+| like                   | 是匹配的文本                                                           |
+| percent_terms_to_match | 匹配项（term）的百分比，默认是0.3                                      |
+| min_term_freq          | 一篇文档中一个词语至少出现次数，小于这个值的词将被忽略，默认是2        |
+| max_query_terms        | 一条查询语句中允许最多查询词语的个数，默认是25                         |
+| stop_words             | 设置停止词，匹配时会忽略停止词                                         |
+| min_doc_freq           | 一个词语最少在多少篇文档中出现，小于这个值的词会将被忽略，默认是无限制 |
+| max_doc_freq           | 一个词语最多在多少篇文档中出现，大于这个值的词会将被忽略，默认是无限制 |
+| min_word_len           | 最小的词语长度，默认是0                                                |
+| max_word_len           | 最多的词语长度，默认无限制                                             |
+| boost_terms            | 设置词语权重，默认是1                                                  |
+| boost                  | 设置查询权重，默认是1                                                  |
+| analyzer               | 设置使用的分词器，默认是使用该字段指定的分词器                         |
+
+POST tmdb/_search
+{
+  "_source": ["title","overview"],
+  "query": {
+    "more_like_this": {
+      "fields": [ //fields是要匹配的字段，如果不填的话默认是_all字段
+        "title^10","overview"
+      ],
+      "like": [{"_id":"14191"}], //要匹配的文本
+      "min_term_freq": 1, //一篇文档中一个词语至少出现次数，小于这个值的词将被忽略，默认是2
+      "max_query_terms": 12 //一条查询语句中允许最多查询词语的个数，默认是25
+    } 
+  }
+}
+
+### dis_max查询与bool查询
+不使用 bool 查询，可以使用 dis_max 即分离最大化查询（Disjunction Max Query） 。分离（Disjunction）的意思是 或（or） ，这与可以把结合（conjunction）理解成 与（and） 相对应。分离最大化查询（Disjunction Max Query）指的是： 将任何与任一查询匹配的文档作为结果返回，但只将最佳匹配的评分作为查询的评分结果返回。
+POST /blogs/_search
+{
+    "query": {
+        "bool": {
+            "should": [
+                { "match": { "title": "Brown fox" }},
+                { "match": { "body":  "Brown fox" }}
+            ]
+        }
+    }
+}
+- 回想一下 bool 是如何计算评分的：它会执行should语句中的两个查询。对两个查询的评分相加。乘以匹配语句的总数。除以所有语句总数。
+- 如果不是简单将每个字段的评分结果加在一起，而是将最佳匹配字段的评分作为查询的整体评分，结果会怎样？这样返回的结果可能是： 同时包含brown和fox的单个字段比反复出现相同词语的多个不同字段有更高的相关度。
+  
+### dis_max查询
+POST blogs/_search
+{
+    "query": {
+        "dis_max": {
+            "queries": [
+                { "match": { "title": "Brown fox" }},
+                { "match": { "body":  "Brown fox" }}
+            ]
+        }
+    }
+}
+
+### 最佳字段查询调优
+有一些情况下，同时匹配 title 和 body 字段的文档比只与一个字段匹配的文档的相关度更高
+但 disjunction max query 查询指挥简单的使用单个最佳匹配语句的评分_scoce 作为整体评分
+- 通过 Tie Breaker 参数调整
+获得最佳匹配语句的评分
+将其他匹配语句的评分 与 tie_breaker 相乘
+对以上评分求和并规范化
+Tie Breanker 是一个介于 0-1 之间的浮点数。0 代表使用最佳匹配;1 代表所有语句同等重要
+
+POST blogs/_search
+{
+    "query": {
+        "dis_max": {
+            "queries": [
+                { "match": { "title": "Brown fox" }},
+                { "match": { "body":  "Brown fox" }}
+            ],
+            "tie_breaker": 0.2
+        }
+    }
+}
+
+### multi_match
+POST titles/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "barking dogs",
+      "type": "most_fields", //默认是best_fields
+      "fields": ["title","title.std"]//累计叠加
+    }
+  }
+}
+
+### 综合排序 Function Score Query 优化算分
+可以在查询结束后，对每一个匹配的文档进行一系列的重新算分，根据新生成的分数进行排序
+  Weight：为每一个文档设置一个简单而不被规范化的权重
+  Field Value Factor：使用该数值来修改_score，例如将 “热度” 和 “点赞数” 作为算分的参考因素
+  Random Score：为每一个用户使用一个不同的，随机算分结果
+  Boost Mode
+    Multiply：算分和函数值的乘积
+    Sum：算分和函数值的和
+    Min/Max：算分与函数去 最小 / 最大值
+    Replace：使用函数取代算分
+    Max Boost 可以将算分控制在一个最大值
+
+POST /blogs/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "multi_match": {
+          "query":    "popularity",
+          "fields": [ "title", "content" ]
+        }
+      },
+      "field_value_factor": {
+        "field": "votes", //使用votes的值与_score相乘，根据结果排序
+        "modifier": "log1p", //新的算分 = 老的算分 * log（1 + 投票数）
+        "factor": 1.2 //新的算分 = 老的算分 * log（1 + factor * 投票数）
+      },
+      "boost_mode": "sum",
+      "max_boost": 3
+    }
+  }
 }
