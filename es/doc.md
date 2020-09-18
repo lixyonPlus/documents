@@ -1,10 +1,82 @@
 # 
 
+### 处理集群中状态异常的情况
+- red表示不是所有的主分片都可用，通常时由于某个索引的住分片为分片unassigned，只要找出这个索引的分片，手工分配即可
+  _cluster/health?level=indices 查看所有索引信息，删除状态异常的索引
+- yellow表示所有主分片可用，但不是所有副本分片都可用，最常见的情景是单节点时，由于es默认是有1个副本，主分片和副本不能在同一个节点上，所以副本就是未分配unassigned
+  _cat/shards | grep UNASSIGNED 过滤查看所有未分配索引的方式
+  reroute的allocate分配分片:
+```
+//查看分片异常原因
+GET _cluster/allocation/explain
+//重新分配分片
+POST _cluster/reroute
+{
+  "commands": [
+    {
+      "allocate": {
+        "index": "eslog1",
+        "shard": 4,
+        "node": "es1",
+        "allow_primary": true
+      }
+    }
+  ]
+}
+//重建索引
+POST _reindex
+{
+  "source": {
+    "index": "旧索引名"
+  },
+  "dest": {
+    "index": "新索引名"
+  }
+}
+//查看重建索引的设置
+GET /新索引名
+
+//删除索引
+DELETE /旧索引名
+  
+//创建索引别名
+POST /_aliases
+{
+  "actions": [
+    {
+      "add": {
+        "index": "新索引名",
+        "alias": "旧索引名"
+      }
+    }
+  ]
+}
+```
+
+### Ingest Node
+- Elasticsearch 5.0 后，引入的一种新的节点类型。默认配置下，每个节点都是 Ingest Node
+    具有预处理数据的能力，可拦截 Index 或者 Bulck API 的请求
+    对数据进行转换，并重新返回给 Index 和 Bluck API
+- 无需 Logstash ，就可以进行数据的预处理，例如
+    为某个字段设置默认值；重命名某个字段的字段名；对字段值进行 Split 操作
+    支持设置 Painless 脚本，对数据进行更加复杂的加工
+
+
 ### Mapping中的字段一旦设定后，禁止直接修改。因为倒排索引生成后不允许直接修改。需要重新建立新的索引，做reindex操作。
 - 类似数据库中的表结构定义，主要作用
 - 定义索引下的字段名字
 - 定义字段的类型
 - 定义倒排索引相关的配置（是否被索引？采用的Analyzer）
+- Mapping字段的相关设置
+    Enabled
+    Index
+    Norms
+    Doc_values
+    Field_data
+    Store
+    Coerce
+    Multifields
+    Dynamic
 
 ### Dynamic Mapping
 - 在写入文档的时候，如果索引不存在，会自动创建索引
@@ -108,8 +180,12 @@ Term 查询 / Prefix 前缀查询
 结构化数据的精确匹配，就使用term查询。日期属于结构化数据。match主要用于文本的full-text查询,Term 查询是包含，不是完全相等。针对多值字段查询要尤其注意
 
 ### 相关性算分 - Relevance
-搜索的相关性算分，描述了一个文档和查询语句匹配的程度。ES 会对每个匹配查询条件的结构进行算分_score
-打分的本质是排序 , 需要把最符合用户需求的文档排在前面。ES 5 之前，默认的相关性打分采用 TF-IDF，现在采用 BM25
+搜索的相关性算分，描述了一个文档和查询语句匹配的程度。ES会对每个匹配查询条件的结构进行算分_score
+打分的本质是排序 , 需要把最符合用户需求的文档排在前面。ES5之前，默认的相关性打分采用 TF-IDF，现在采用BM25
+### TF-IDF
+- Field-length norm：field长度，field越长，相关度越弱
+- Term frequency：搜索文本中的各个词条在field文本中出现了多少次，出现次数越多，就越相关
+- 搜索文本中的各个词条在整个索引的所有文档中出现了多少次，出现的次数越多，就越不相关
 
 ### Multi Match
 - 三种场景
@@ -1458,3 +1534,461 @@ GET my_blogs/_doc/child_id?routing=parent_id
 | 缺点     | 更新嵌套的子文档时，需要更新整个文档 | 需要额外的内存去维护关系。读取性能相对差 |
 | 适用场景 | 子文档偶尔更新，以查询为主           | 子文档更新频繁                           |
 
+---
+
+### 一般在以下几种情况时，我们需要重建索引：
+- 索引的 Mappings 发生变更：字段类型更改，分词器及字典更新
+- 索引的 Setting 发生变更：索引的主分片数发生改变
+- 集群内，集群间需要做数据迁移
+- ElastiicSearch 的内置提供的 API
+    Update By Query : 在现有索引上重建
+    Reindex：在其他索引上重建索引
+
+### Update所有文档,重建索引
+```
+POST blogs/_update_by_query
+{}
+```
+
+### 在所有文档增加字段
+```
+POST blogs/_update_by_query
+{
+  "script": {
+    "source": "ctx._source['contact'] = \"139111111111\""
+  }
+}
+```
+
+### 对原文档符合条件的内容进行更新
+```
+POST blogs/_update_by_query
+{
+  "query": {
+    "match": {
+      "content.english": "hadoop"
+    }
+  },
+  "script": {
+    "source": """
+       ctx._source['keyword'] += params['one']
+    """,
+    // "source": "ctx._source['keyword'] += params['one']",
+    "params": {
+      "one": 2
+    }
+  }
+}
+```
+
+### 使用reindex重建索引
+Reindex API支持把文档从一个索引拷贝到另外一个索引
+- 使用 Reindex API 的一些场景:
+    修改索引的主分片数
+    改变字段的 Mapping 中的字段类型
+    集群中数据迁移、跨集群的数据迁移
+slices=5:指定划分为多少个片并行执行
+refresh:Index API的refresh只会让接收新数据的碎片被刷新，而reindex的refresh则会刷新所有索引
+wait_for_completion:将参数设置为false则会执行一些预执行检查，启动请求，然后返回一个任务，该任务可以用于任务api来取消或获得任务的状态。Es会在.tasks/task/${taskId}中创建记录ID
+wait_for_active_shards:在Bulk API的情况下，requests_per_second可以设置在继续索引之前，控制多少个碎片的拷贝数必须是活跃的。而timeout 超时控制每个写请求等待不可用的碎片等待的时间
+requests_per_second:每秒的请求数据，显然是节流控制参数，运行设置一个正整数，设置为-1表示不进行控制
+```
+POST  _reindex
+{
+  "source": {
+    "index": "blogs",
+     "_source":["field_name_1", "field_name_2"],
+    "query":{}
+  },
+  "dest": {
+    "index": "blogs_fix",
+    "version_type": "external"  //以旧索引的数据为准
+  }
+  // "conflicts": "proceed" 冲突以旧索引为准，直接跳过冲突，否则会抛出异常，
+}
+```
+
+### 跨集群reindex
+```
+POST _reindex
+{
+  "source": {
+    "remote": {
+      "host": "http://localhost:9200"
+    },
+    "index": "blogs",
+    "size": 100,
+    "query": {
+      "match": {
+        "test": "data"
+      }
+    }
+  },
+  "dest": {
+    "index": "blogs_fix"
+  }
+}
+```
+
+### 使用Task API查看reindex的情况
+```
+GET _tasks?detailed=true&actions=*reindex
+```
+
+### 根据taskId查询详情
+```
+GET /_tasks/taskId:9620804
+```
+
+### 使用Cancel Task API取消正在执行的reindex操作
+```
+POST _tasks/task_id:9620804/_cancel
+```
+
+### 使用Task API 重置reindex的节流限制
+```
+POST _reindex/task_id:9620804/_rethrottle?requests_per_second=-1
+```
+
+---
+
+# ingest pipeline
+- 一些内置的 Processors
+    Split Processor （例如：将给定字段分成一个数组）
+    Remove / Rename Processor （移除一个重命名字段）
+    Append（为商品增加一个新的标签）
+    Convert （将商品价格，从字符串转换成 float 类型）
+    Date / JSON （日期格式转换，字符串转 JSON 对象）
+    Date Index Name Processor （将通过该处理器的文档，分配到指定时间格式的索引中）
+    Fail Processor （一旦出现异常，该 Pipeline 指定的错误信息能返回给用户）
+    Foreach Process （数组字段，数组的每个元素都会使用到一个相同的处理器）
+    Grok Processor （日志的日志格式切割）
+    Gsub / Join / Split （字符串替换、数组转字符串、字符串转数组）
+    Lowercase / Upcase（大小写转换）
+
+### 使用逗号分隔tags字段内容并为文档增加一个字段views
+```
+POST _ingest/pipeline/_simulate
+{
+  "pipeline": {
+    "description": "to split blog tags",
+    "processors": [
+      {
+        "split": {
+          "field": "tags",
+          "separator": ","
+        }
+      },
+      {
+        "set": {
+          "field": "views",
+          "value": 0
+        }
+      }
+    ]
+  },
+  "docs": [
+    {
+      "_index": "index",
+      "_id": "id",
+      "_source": {
+        "title": "Introducing big data......",
+        "tags": "hadoop,elasticsearch,spark",
+        "content": "You konw, for big data"
+      }
+    },
+    {
+      "_index": "index",
+      "_id": "idxx",
+      "_source": {
+        "title": "Introducing cloud computering",
+        "tags": "openstack,k8s",
+        "content": "You konw, for cloud"
+      }
+    }
+  ]
+}
+```
+
+### 为ES添加一个 Pipeline
+```
+PUT _ingest/pipeline/blog_pipeline
+{
+  "description": "a blog pipeline",
+  "processors": [
+    {
+      "split": {
+        "field": "tags",
+        "separator": ","
+      }
+    },
+    {
+      "set": {
+        "field": "views",
+        "value": 0
+      }
+    }
+  ]
+}
+```
+### 测试pipeline
+```
+POST _ingest/pipeline/blog_pipeline/_simulate
+{
+  "docs": [
+    {
+      "_source": {
+        "title": "Introducing cloud computering",
+        "tags": "openstack,k8s",
+        "content": "You konw, for cloud"
+      }
+    }
+  ]
+}
+```
+
+### Ingest Node vs Logstash
+|                | Logstash                                   | Ingest Node                                                 |
+| -------------- | ------------------------------------------ | ----------------------------------------------------------- |
+| 数据输入与输出 | 支持从不同的数据源读取，并写入不同的数据源 | 支持从 ES REST API 获取数据，并且写入 ES                    |
+| 数据源缓冲     | 实现了简单的数据队列，支持重写             | 不支持缓冲                                                  |
+| 数据处理       | 支持大量的的插件，也支持定制开发           | 内置的插件，可以开发 Plugin 进行扩展（Plugin 更新需要重启） |
+| 配置和使用     | 增加了一定的架构复杂度                     | 无需额外部署                                                |
+
+# Painless
+自ES5.x后引入，专门为ES设置，扩展了Java 的语法
+6.0 开始，ES只支持Painless。Grooby ,JavaScript和Python都不在支持
+Painless支持所有的Java的数据类型及Java API子集
+Painless Script具备以下特性
+高性能、安全
+支持显示类型或者动态定义类型
+- Painless的用途
+    可以对文档字段进行加工处理
+    更新或者删除字段，处理数据聚合操作
+    Script Field： 对返回的字段提前进行计算
+    Function Score：对文档的算分进行处理
+    在 Ingest Pipeline 中执行脚本
+    在 Reindex API，Update By Query 时，对数据进行处理
+
+- 通过 Painless 脚本访问字段
+| 上下文               | 语法                   |
+| -------------------- | ---------------------- |
+| Ingestion            | ctx.field_name         |
+| Update               | ctx._source.field_name |
+| Search & Aggregation | doc{“field_name”]      |
+
+![案例1](https://cdn.learnku.com/uploads/images/202001/12/29212/YfYZYEvQ65.png)
+![案例2](https://cdn.learnku.com/uploads/images/202001/12/29212/RknNFr4BYs.png)
+![案例3](https://cdn.learnku.com/uploads/images/202001/12/29212/FUptozyIcb.png)
+![Script :Inline v.s Stored](https://cdn.learnku.com/uploads/images/202001/12/29212/n0WWW3GnBc.png)
+
+### 脚本缓存
+- 编译的开销相较大
+- Elasticsearch会将脚本编译后缓存在Cache中
+- Inline scripts和Stored Scripts都会被缓存
+- 默认缓存 100 个脚本
+![](https://cdn.learnku.com/uploads/images/202001/12/29212/GrjcqqKOuy.png)
+
+
+### 字段类型: Text vs Keyword
+- Text
+    用于全文本字段，文本会被 Analyzer 分词
+    默认不支持聚合分析及排序。需要设置 fielddata 为 true
+- Keyword
+    用于 id ，枚举及不需要分词的文本。例如电话号码，email 地址，手机号码，邮政编码，性别等
+    适用于 Filter（精确匹配），Sorting 和 Aggregations
+- 设置多字段类型
+    默认会为文本类型设置成 text ，并且设置一个 keyword 的子字段
+    在处理人类语言时，通过增加 “英文”，“拼音” 和 “标准” 分词器，提高搜索结构
+
+### 检索
+- 如不需要检索，排序和聚合分析,Enable设置成false,index设置成false
+- 对需要检索的字段，可以通过如下配置，设置存储粒度
+    Index_options/Norms : 不需要归一化数据时，可以关闭
+![](https://cdn.learnku.com/uploads/images/202001/15/29212/SM9UPnmLlV.png)
+
+### 聚合及排序
+- 如不需要检索，排序和聚合分析,Enable设置成false,Doc_values/fielddata设置成false
+- 更新频繁，聚合查询频繁的keyword类型的字段,推荐将eager_global_ordinals设置为true
+
+### 额外的存储
+- 是否需要专门存储当前字段数据
+    Store 设置为 true ，可以存储该字段的原始数据
+    一般结合 _source 的 enabled 为 false 时候使用
+- Disable_source ： 节约磁盘，适用于指标型数据
+    一般建议先考虑增加压缩比
+    无法看到 _source 字段，无法做 ReIndex，无法做 Update
+    Kibana 中无法做 discovery
+
+### 如果字段过多，返回的_source过大
+- 解决方法
+1. 关闭 _source
+2. 将每个字段的“store”设置成true
+![](https://cdn.learnku.com/uploads/images/202001/15/29212/5VuRDUyXKK.png)
+- 解决字段过大引发的性能问题
+1. 返回结果不包含 _source 字段
+2. 对于需要显示的信息，可以在查询中指定 “store_fields”
+3. 禁止 _source 字段后，还是支持使用 hignlights API ，高亮显示 content 中的匹配的相关信息
+![](https://cdn.learnku.com/uploads/images/202001/15/29212/WOoEOM12pB.png)
+
+--- 
+
+### 数据建模(一)：如何处理关联关系
+Object:优先考虑反范式设计(Denormailzation)
+Nested:当数据包含多数值对象（多个演员），同时有查询需求
+Child/Parent:关联文档更新非常频繁时
+
+### 建模建议(二)：避免过多字段
+- 一个文档中，最好避免大量的字段,过多的字段数不容易维护,Mapping信息保存在 Cluster State 中，数据量过大，对集群性能会有影响（Cluster State 信息需要和所有的节点同步）,删除或者修改数据需要reindex
+- 默认最大字段数是 1000，可以设置 index.mapping.total_fields.limit 限制最大的字段数
+
+### Dynamic vs Strict
+- Dynamic （生产环境中，尽量不要打开Dynamic）
+    true - 未知字段会被自动加入
+    false - 新字段不会被索引，但是会保存在 _source
+    strict - 新增字段不会被索引，文档写入失败
+- Strict
+    可以控制到字段级别
+
+### 当Dynamic设置为True,同时采用扁平化的设计，必然导致字段数量的膨胀
+- 解决方案： Nested Object & Key Value
+- 通过 Nested 对象保存 Key / Value的一些不足:
+    可以减少字段数量，解决 Cluster State 中保存过多Meta信息的问题，但是
+    导致查询语句复杂度增加
+    Nested 对象 ，不利于在Kibana汇总实现可视化分析
+
+### 建模建议（三）：避免正则查询
+- 正则，通配符查询，前缀查询属于 Term 查询，但是性能不够好
+- 特别是将通配符放在开头，会导致性能的灾难
+- 解决方案使用内部对象
+```
+//设置mapping
+PUT softwares/
+{
+  "mappings": {
+    "_meta": {
+      "software_version_mapping": "1.1"
+    },
+    "properties": {
+      "version": {
+        "properties": {
+          "display_name": {
+            "type": "keyword"
+          },
+          "hot_fix": {
+            "type": "byte"
+          },
+          "marjor": {
+            "type": "byte"
+          },
+          "minor": {
+            "type": "byte"
+          }
+        }
+      }
+    }
+  }
+}
+
+//通过Inner Object 写入多个文档
+PUT softwares/_doc/1
+{
+  "version": {
+    "display_name": "7.1.0",
+    "marjor": 7,
+    "minor": 1,
+    "hot_fix": 0
+  }
+}
+
+// 通过 bool 查询，
+POST softwares/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "match": {
+            "version.marjor": 7
+          }
+        },
+        {
+          "match": {
+            "version.minor": 1
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### 建模建议(四)避免空置引起的聚合不准
+```
+//设置空值的默认值是0
+PUT ratings
+{
+  "mappings": {
+      "properties": {
+        "rating": {
+          "type": "float",
+          "null_value": 0
+        }
+      }
+    }
+}
+//查询空值
+POST ratings/_search
+{
+  "query": {
+    "term": {
+      "rating": {
+        "value": 0
+      }
+    }
+  }
+}
+```
+
+### 建模建议（五）：为索引的Mapping加入Meta的信息
+- Mappings 设置非常重要，需要从两个维度进行考虑
+    功能：索引，聚合，排序
+    性能：存储的开销，内存的开销，搜索的性能
+- Mappings 设置是一个迭代的过程
+    加入新的字段容易（必要时需要 update_by_query）
+    更新删除字段不允许（需要Reindex重建数据）
+    最好能对Mappings加入Meta信息，更好的进行版本管理
+    可以考虑Mapping文件上传git进行管理
+
+### 如何将一个field索引两次来解决字符串排序问题
+通常解决方案是，将一个string field建立两次索引，一个分词，用来进行搜索；一个不分词，用来进行排序
+```
+PUT /website 
+{
+  "mappings": {
+    "article": {
+      "properties": {
+        "title": {
+          "type": "text",
+          "fields": {
+            "raw": {
+              "type": "string",
+              "index": "not_analyzed"
+            }
+          },
+          "fielddata": true
+        },
+        "content": {
+          "type": "text"
+        },
+        "post_date": {
+          "type": "date"
+        },
+        "author_id": {
+          "type": "long"
+        }
+      }
+    }
+  }
+}
+```
