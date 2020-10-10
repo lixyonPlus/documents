@@ -8,8 +8,11 @@
   reroute的allocate分配分片:
 ```
 //查看分片异常原因
+```
 GET _cluster/allocation/explain
+```
 //重新分配分片
+```
 POST _cluster/reroute
 {
   "commands": [
@@ -23,6 +26,7 @@ POST _cluster/reroute
     }
   ]
 }
+```
 //重建索引
 POST _reindex
 {
@@ -1265,6 +1269,8 @@ POST kibana_sample_data_flights/_search
 
 ### Elasticsearch并不擅长处理关联关系，一般采用以下四种方法处理关联
 对象类型、嵌套对象（Nested Object）、父子关联关系（Parent 、Child）、应用端关联
+- 使用 Nested 类型的数据。查询速度会慢几倍
+- 使用 Parent / Child 关系。查询速度会慢几百倍
 
 ### 设置文档mapping，对象嵌套
 ```
@@ -1990,5 +1996,192 @@ PUT /website
       }
     }
   }
+}
+```
+
+# 慢查询/索引日志配置
+- elasticsearch.yml
+```
+# search slowlog
+index.search.slowlog.threshold.query.warn: 10s  #超过10秒的query产生1个warn日志
+index.search.slowlog.threshold.query.info: 5s  #超过5秒的query产生1个info日志
+index.search.slowlog.threshold.query.debug: 2s #超过2秒的query产生1个debug日志
+index.search.slowlog.threshold.query.trace: 500ms #超过500毫秒的query产生1个trace日志
+index.search.slowlog.threshold.fetch.warn: 1s  #fetch阶段的配置
+index.search.slowlog.threshold.fetch.info: 800ms
+index.search.slowlog.threshold.fetch.debug: 500ms
+index.search.slowlog.threshold.fetch.trace: 200ms
+
+# index slowlog
+index.indexing.slowlog.threshold.index.warn: 10s   ##索引数据超过10秒产生一个warn日志
+index.indexing.slowlog.threshold.index.info: 5s  ##索引数据超过5秒产生一个info日志
+index.indexing.slowlog.threshold.index.debug: 2s ##索引数据超过2秒产生一个ddebug日志
+index.indexing.slowlog.threshold.index.trace: 500ms ##索引数据超过500毫秒产生一个trace日志
+
+index.search.slowlog.level: info 
+index.search.slowlog.source: 1000 # ES会记录_source 中前1000个字符到慢日志中
+
+```
+
+### 通过API动态的修改配置
+```
+PUT /my_index/_settings
+{
+    "index.search.slowlog.threshold.query.warn" : "10s", # 查询慢于10秒输出一个WARN日志
+    "index.search.slowlog.threshold.fetch.debug": "500ms",  # 获取慢于500毫秒输出一个DEBUG日志
+    "index.indexing.slowlog.threshold.index.info": "5s" # 索引慢于5秒输出一个INFO日志
+}
+```
+### 配置集群慢查询日志级别
+```
+PUT /_cluster/settings
+{
+    "transient" : {
+        "logger.index.search.slowlog" : "DEBUG",        # 设置搜索慢日志为DEBUG级别
+        "logger.index.indexing.slowlog" : "WARN"        # 设置索引慢日志为WARN级别
+    }
+}
+```
+# es 缓存
+### Node Query Cache (Filter Context)
+- 每一个节点有一个 Node Query 缓存
+- 由该节点的所有 Shard 共享，只缓存 Filter Context 相关内容 
+- Cache采用LRU 算法
+静态配置，需要设置在每个Data Node 上
+- Node Level - indices.queries.cache.size: ”10%” 
+- Index Level: index.queries.cache.enabled: true
+- 保存的是Segment级缓存命中的结果。Segment 被合并后，缓存会失效
+- 
+### Shard Query Cache (Cache Query的结果)
+- 缓存每个分片上的查询结果
+- 只会缓存设置了size=0的查询对应的结果。不会缓存hits。但是会缓存(聚合)Aggregations和(推荐结果)Suggestions 
+- Cache采用LRU算法，将整个JSON查询串作为Key，与JSON对象的顺序相关
+静态配置
+- 数据节点: indices.requests.cache.size: “1%”
+- 分片Refresh时候，Shard Request Cache会失效。如果Shard对应的数据频繁发生变化，该缓存的效率会很差
+
+### Fielddata Cache
+除了Text类型，默认都采用doc_values,节约了内存
+- Aggregation的Global ordinals也保存在Fielddata cache中
+- Text类型的字段需要打开Fileddata才能对其进行聚合和排序 
+- Text经过分词，排序和聚合效果不佳，建议不要轻易使用
+静态配置
+- 可以控制Indices.fielddata.cache.size, 避免产生GC(默认无限制)
+- Segment被合并后，会失效
+
+### 设置索引只读
+```
+PUT _index/_settings
+  {
+    "index.blocks.read_only_allow_delete": true/null #只读/正常
+  }
+```
+
+---
+
+# 断路器Circuit Breaker
+ 包含多种断路器，避免不合理操作引发的 OOM，每个断路器可以指定内存使用的限制 
+- Parent circuit breaker:设置所有的熔断器可以使用的内存的总量
+- Fielddata circuit breaker:加载 fielddata 所需要的内存
+- Request circuit breaker:防止每个请求级数据结构超过一定的内存(例如聚合计算的内存) 
+- In flight circuit breaker:Request中的断路器
+- Accounting request circuit breaker:请求结束后不能释放的对象所占用的内存
+查看断路器信息
+```
+GET /_nodes/stats/breaker?
+# Tripped 大于 0， 说明有过熔断
+# Limit size 与 estimated size 约接近，越可能引发熔断
+```
+
+---
+
+### 从集群中移除一个节点
+```
+PUT _cluster/settings
+{
+  "transient": {
+    "cluster.routing.allocation.excloud._ip": "node_name"
+  }
+}
+```
+
+### 从集群中移动分片
+```
+POST _cluster/reroute
+{
+  "commands": [
+    {
+      "move": {
+        "index": "index_name",
+        "shard": 0,
+        "from_node": "from_node",
+        "to_node": "to_node"
+      }
+    }
+  ]
+}
+```
+
+### 控制分片(Allocation)和恢复(Recovery)
+# change the number of moving shards to balance the cluster
+```
+PUT _cluster/settings
+{
+"transient":["cluster.routing.allocation.cluster_concurrent_rebalance":2]
+}
+```
+
+# change the number of shards being recovered simultanceously per node
+```
+PUT _cluster/settings
+{
+"transient": ["cluster.routing.allocation.node_concurrent_recoveries":5]
+}
+```
+
+# Change the recovery speed
+```
+PUT _cluster/settings
+{
+"transient": ["indices.recovery.max_bytes_per_sec":"80mb"]
+}
+```
+
+# Change the number of concurrent streams for a recovery on a single node
+```
+PUT _cluster/settings
+{
+"transient": ["indices.recovery.concurrent_streams":6]
+}
+```
+---
+
+### Synced Flush
+需要重启一个节点,通过 synced flush，可以在索引上放置一个 sync ID。这样可以提供这些分片的 Recovery 的时间
+```
+PUT _flush/synced
+```
+
+### 清空节点上的缓存
+使用场景:节点上出现了高内存占用。可以执行清除缓存的操作。这个操作会影响集群的性能， 但是会避免你的集群出现 OOM 的问题
+```
+PUT _cache/clear
+```
+
+### 控制搜索的队列
+使用场景:当搜索的响应时间过长，看到有“reject” 指标的增加，都可以适当增加该数值
+```
+PUT _cluster/settings
+{
+"transient": "threadpool.search.queue.size":2000
+}
+```
+
+### 设置 Circuit Breaker
+使用场景:设置各类 Circuit Breaker。避免 OOM 的发生
+```
+PUT _cluster/settings
+{
+"transient": "indices.breaker.total.limit":40%
 }
 ```

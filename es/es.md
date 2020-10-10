@@ -156,7 +156,7 @@ PUT _index/_create/1
     "message" : "trying out Elasticsearch"
 }
 
-### 在原文档上增加字段,原文档不存在报错
+### 在原文档上增加字段及内容,原文档不存在报错
 POST _index/_update/1
 {
     "doc":{
@@ -315,7 +315,7 @@ POST _index/_msearch
 DELETE _index
 
 ### 手动安装分词器
-sudo bin/elasticsearch-plugin install file:///analysis-icu-7.5.0.zip
+sudo bin/elasticsearch-plugin install file://analysis-icu-7.5.0.zip
 
 
 ### 查看分词器结果
@@ -1098,7 +1098,7 @@ POST titles/_search
     Min/Max：算分与函数去 最小 / 最大值
     Replace：使用函数取代算分
     Max Boost 可以将算分控制在一个最大值
-
+```
 POST /blogs/_search
 {
   "query": {
@@ -1119,3 +1119,59 @@ POST /blogs/_search
     }
   }
 }
+```
+
+### 索引的开启/关闭
+索引关闭后，对集群的相关开销基本降低为0,但是无法被读取和搜索,当需要的时候，可以重新打开
+```
+POST _index/_open
+POST _index/_close
+```
+
+### Shrink API
+ES5.x后推出的一个新功能，使用场景:索引保存的数据量比较小，需要重新设定主分片数;索引从Hot移动到Warm后，需要降低主分片数
+会使用和源索引相同的配置创建一个新的索引，仅仅降低主分片数;源分片数必须是目标分片数的倍数。如果源分片数是素数，目标分片数只能为1
+如果文件系统支持硬链接，会将Segments硬连接到目标索引，所以性能好;完成后，可以删除源索引
+- 分片必须只读
+- 所有的分片必须在同一个节点上 
+- 集群健康状态为Green
+```
+POST my_source_index/_shrink/my_target_index
+{
+  "settings": {
+    "index.number_of_replicas": 1,
+    "index.number_of_shards": 2,
+    "index.codec": "best_compression"
+  },
+  "aliases": {
+    "my_search.indices": {}
+  }
+}
+```
+---
+
+### Rollover API
+- 当满足一系列的条件，Rollover API支持将一个Alias指向一个新的索引 
+  存活的时间 / 最大文档数 / 最大的文件尺寸
+- 应用场景:当一个索引数据量过大
+- 一般需要和Index Lifecycle Management Policies 结合使用
+- 只有调用Rollover API时，才会去做相应的检测,ES并不会自动去监控这些索引
+
+```
+### 创建索引logs-0000001别名为logs_write.
+PUT logs-000001
+{
+  "aliases": {
+    "logs_write": {}
+  }
+}
+# 如果logs_write指向的索引是在7天以前创建的，或者包含1000个以上的文档，则会创建logs-000002索引，并更新logs_write别名以指向logs-000002.
+POST logs_write/_rollover
+{
+  "conditions": {
+    "max_age":   "7d", # 大于7天
+    "max_docs":  1000  # 大于1000个文档
+  }
+}
+```
+
