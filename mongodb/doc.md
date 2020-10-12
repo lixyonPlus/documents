@@ -1,3 +1,13 @@
+# MongoDB 的备份
+- MongoDB 的备份机制分为: 
+  - 延迟节点备份
+  - 全量备份 + Oplog 增量
+- 最常见的全量备份方式包括:
+  - mongodump
+  - 复制数据文件
+  - 文件系统快照
+
+![延迟节点备份](https://s1.ax1x.com/2020/10/12/02tRte.png)
 
 ### 命令行数据库备份与恢复工具mongodump / mongorestore
 ```shell

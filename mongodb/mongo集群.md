@@ -160,6 +160,205 @@ processManagement:
   - 大部分人的年龄范围为15~18岁(学生)
   - 15、16、17、18四个 chunk 的数据量、访问压力远大于其他 chunk
 
+### 分片集群搭建
+![集群架构](https://s1.ax1x.com/2020/10/12/028FbD.png)
+![节点分布](https://s1.ax1x.com/2020/10/12/023zCR.png) 
+1. 配置域名解析
+   - 在3个节点上分别执行以下3条命令，注意替换实际IP地址
+```shell
+echo "192.168.1.1 geekdemo1 member1.example.com member2.example.com" >> /etc/hosts 
+echo "192.168.1.2 geekdemo2 member3.example.com member4.example.com" >> /etc/hosts 
+echo "192.168.1.3 geekdemo3 member5.example.com member6.example.com" >> /etc/hosts
+```
+2. 准备分片目录
+   - 在各服务器上创建数据目录，我们使用 `/data`，请按自己需要修改为其他目录:
+```shell
+# 在member1 / member3 / member5 上执行以下命令:
+mkdir -p /data/shard1/ mkdir -p /data/config/
+# 在member2 / member4 / member6 上执行以下命令:
+mkdir -p /data/shard2/ mkdir -p /data/mongos/
+```
+3. 创建第一个分片用的复制集
+```shell
+# 在 member1 / member3 / member5 上执行以下命令。
+mongod --bind_ip 0.0.0.0 --replSet shard1 --dbpath /data/shard1 --logpath /data/shard1/mongod.log --port 27010 --fork --shardsvr --wiredTigerCacheSizeGB 1
+```
+4. 初始化第一个分片复制集
+```shell
+> mongo --host member1.example.com:27010
+> rs.initiate({
+    _id: "shard1",
+    "members" : [
+      {"_id": 0,
+       "host" : "member1.example.com:27010"
+      },
+      {"_id": 1,
+       "host" : "member3.example.com:27010"
+      },
+      {"_id": 2,
+       "host" : "member5.example.com:27010"
+      }
+    ]
+})
+```
+5. 创建config server复制集
+```shell
+# 在 member1 / member3 / member5 上执行以下命令。
+mongod --bind_ip 0.0.0.0 --replSet config --dbpath /data/config --logpath /data/config/mongod.log --port 27019 --fork --configsvr --wiredTigerCacheSizeGB 1
+```
+6. 初始化config server复制集
+```shell
+> mongo --host member1.example.com:27019
+> rs.initiate({
+    _id: "config",
+    "members" : [
+      {"_id": 0,
+      "host":"member1.example.com:27019"
+      },
+      {"_id": 1,
+      "host":"member3.example.com:27019"
+      },  
+      {"_id": 2,
+      "host":"member5.example.com:27019"
+      }
+    ]
+})
+```
+7. 在第一台机器上搭建 mongos
+```shell
+> mongos --bind_ip 0.0.0.0 --logpath /data/mongos/mongos.log --port 27017 --fork --configdb config/member1.example.com:27019,member3.example.com:27019,member5.example.com:27019
+# 连接到mongos, 添加分片
+> mongo --host member1.example.com:27017
+mongos > sh.addShard("shard1/member1.example.com:27010,member3.example.com:27010,member5 .example.com:27010");
+```
+8. 创建分片表
+```shell
+# 连接到mongos, 创建分片集合
+> mongo --host member1.example.com:27017
+mongos > sh.status()
+mongos > sh.enableSharding("foo")
+mongos > sh.shardCollection("foo.bar", {_id: 'hashed'})
+mongos > sh.status()
+```
+```shell
+# 插入测试数据
+use foo
+for (var i = 0; i < 10000; i++) {
+  db.bar.insert({i: i}); 
+}
+```
+9. 创建第2个分片的复制集
+```shell
+# 在 member2 / member4 / member6 上执行以下命令。
+> mongod --bind_ip 0.0.0.0 --replSet shard2 --dbpath /data/shard2 --logpath /data/shard2/mongod.log --port 27011 --fork --shardsvr --wiredTigerCacheSizeGB 1
+```
+10. 初始化第二个分片的复制集
+```
+> mongo --host member2.example.com:27011
+> rs.initiate({
+    _id: "shard2",
+    "members" : [
+      {
+        "_id": 0,
+        "host" : "member2.example.com:27011"
+      },
+      {
+        "_id": 1,
+        "host" : "member4.example.com:27011" 
+      },
+      {
+        "_id": 2,
+        "host" : "member6.example.com:27011"
+      }
+    ]
+  });
+```
+11. 加入第2个分片
+```shell
+# 连接到mongos, 添加分片
+> mongo --host member1.example.com:27017
+mongos > sh.addShard("shard2/member2.example.com:27011,member4.example.com:27011, member6.example.com:27011");
+mongos > sh.status()
+```
+---
+
+# 两地三中心灾备架构
+![](https://s1.ax1x.com/2020/10/12/0Rr5QS.png)
+1. 配置域名解析
+```shell
+# 在3台虚拟机上分别执行以下3条命令，注意替换实际IP地址
+echo "192.168.1.1 geekdemo1 member1.example.com member2.example.com" >> /etc/hosts 
+echo "192.168.1.2 geekdemo2 member3.example.com member4.example.com" >> /etc/hosts 
+echo "192.168.1.3 geekdemo3 member5.example.com" >> /etc/hosts
+```
+2. 启动5个MongoDB实例
+```shell
+# 在虚拟机1上执行以下命令
+mkdir -p member1 member2
+mongod --dbpath ~/member1 --replSet demo --bind_ip 0.0.0.0 --port 10001 --fork --logpath member1.log 
+mongod --dbpath ~/member2 --replSet demo --bind_ip 0.0.0.0 --port 10002 --fork --logpath member2.log
+# 在虚拟机2上执行以下命令
+mkdir -p member3 member4
+mongod --dbpath ~/member3 --replSet demo --bind_ip 0.0.0.0 --port 10003 --fork --logpath member3.log 
+mongod --dbpath ~/member4 --replSet demo --bind_ip 0.0.0.0 --port 10004 --fork --logpath member4.log
+# 在虚拟机3上执行以下命令
+mkdir -p member5
+mongod --dbpath ~/member5 --replSet demo --bind_ip 0.0.0.0 --port 10005 --fork --logpath member5.log
+```
+3. 初始化复制集
+```shell
+# 在虚拟机3上执行以下命令测试所有实例正常工作
+mongo member1.example.com:10001 
+mongo member2.example.com:10002 
+mongo member3.example.com:10003 
+mongo member4.example.com:10004 
+mongo member5.example.com:10005
+# 初始化复制集
+mongo member1.example.com:10001 
+rs.initiate(
+  {
+    "_id" : "demo", "version" : 1,
+    "members" :[
+      {"_id": 0, "host" : "member1.example.com:10001" },
+      {"_id": 1, "host" : "member2.example.com:10002" },
+      {"_id": 2, "host" : "member3.example.com:10003" },
+      {"_id":3,  "host" : "member4.example.com:10004" },
+      {"_id": 4, "host" : "member5.example.com:10005" }
+    ]
+  }
+)  
+```
+4. 配置选举优先级
+把第一台机器上的2个实例的选举优先级调高为5和10(默认为1)
+(通常都有主备数据中心之分，我们希望给主数据中心更高的优先级)
+```javascript
+mongo member1.example.com:10001
+cfg = rs.conf() 
+cfg.members[0].priority = 5 
+cfg.members[1].priority = 10 
+rs.reconfig(cfg)
+```
+5. 启动持续写脚本(每2秒写一条记录)
+在第3台机器上，执行以下mongo shell脚本
+```javascript
+// mongo --retryWrites 
+mongodb://member1.example.com:10001,member2.example.com:10002,member3.example.com:10003,member4. example.com:10004,member5.example.com:10005/test?replicaSet=demo
+// cat ingest-script
+
+db.test.drop()
+for(var i=1;i<1000;i++){
+  db.test.insert({item: i});
+  inserted = db.test.findOne({item: i}); 
+  if(inserted)
+    print(" Item "+ i +" was inserted ” + new Date().getTime()/1000 + );
+  else
+    print("Unexpected "+ inserted)
+  sleep(2000);
+}
+
+```
+---
+
 ### 判断当前运行的Mongo服务是否为主节点可以使用命令db.isMaster()
 
 ### 配置mongo允许从节点读数据
@@ -167,3 +366,26 @@ processManagement:
 # mongo localhost:28018
 > rs.slaveOk()
 ```
+
+---
+
+
+# MongoDB升级流程
+### MongoDB单机升级流程
+![](https://s1.ax1x.com/2020/10/12/0R6oLD.md.png)
+### MongoDB 复制集升级流程
+![](https://s1.ax1x.com/2020/10/12/0Rcopq.md.png)
+### MongoDB 分片集群升级流程
+![](https://s1.ax1x.com/2020/10/12/0RgcCR.png)
+### 版本升级:在线升级
+- MongoDB支持在线升级，即升级过程中不需要间断服务;
+- 升级过程中虽然会发生主从节点切换，存在短时间不可用，但是:
+  - 3.6版本开始支持自动写重试可以自动恢复主从切换引起的集群暂时不可写;
+  - 4.2开始支持的自动读重试则提供了包括主从切换在内的读问题的自动恢复;
+- 升级需要逐版本完成，不可以跳版本:
+   - 正确:3.2->3.4->3.6->4.0->4.2
+   - 错误:3.2->4.2
+   - 原因:
+   - MongoDB复制集仅仅允许相邻版本共存
+   - 有一些升级内部数据格式如密码加密字段，需要在升级过程中由mongo进行转换
+
