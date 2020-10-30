@@ -154,13 +154,13 @@ localhost:8081
 
 ---
 
-### DataStream/DataSet API是Flink提供的核心API ，DataSet处理有界的数据集，DataStream处理有界或者无界的数据流。用户可以通过各种方法（map/flatmap/window/ keyby/sum/max/min/avg/join 等）将数据进行转换/计算。
-
 ### Table API是以表为中心的声明式DSL，其中表可能会动态变化（在表达流数据时）。Table API 提供了例如select、project、join、group-by、aggregate等操作，使用起来却更加简洁（代码量更少）。
 
 ### Source: 数据源，Flink在流处理和批处理上的source大概有 4 类：基于本地集合的source、基于文件的source、基于网络套接字的 source、自定义的source。自定义的 source 常见的有 Apache kafka、Amazon Kinesis Streams、RabbitMQ、Twitter Streaming API、Apache NiFi 等，当然你也可以定义自己的 source。
 
 ### Transformation：数据转换的各种操作，有Map/FlatMap/Filter/KeyBy/Reduce/Fold/Aggregations/Window/WindowAll/Union/Window join/Split/Select/Project等，操作很多，可以将数据转换计算成你想要的数据。
+- Keyby 不能为key的清空：pojo需要重写hashcode/数组
+
 
 ### Sink：接收器，Flink将转换计算后的数据发送的地点 ，你可能需要存储下来，Flink 常见的Sink大概有如下几类：写入文件、打印出来、写入 socket 、自定义的 sink 。自定义的 sink 常见的有Apache kafka、RabbitMQ、MySQL、ElasticSearch、Apache Cassandra、Hadoop FileSystem 等，同理你也可以定义自己的sink。
 
@@ -184,7 +184,6 @@ $\color{red}{注意:如果 watchType 设置为 FileProcessingMode.PROCESS_CONTIN
 - MultipleIdsMessageAcknowledgingSourceBase:在 MessageAcknowledgingSourceBase 的基础上针对 ID 应答机制进行了更为细分的处理，支持两种 ID 应答模型：session id和unique message id。
 - ContinuousFileMonitoringFunction:这是单个（非并行）监视任务，它接受 FileInputFormat，并且根据 FileProcessingMode 和 FilePathFilter，它负责监视用户提供的路径；决定应该进一步读取和处理哪些文件；创建与这些文件对应的 FileInputSplit 拆分，将它们分配给下游任务以进行进一步处理。
 
-### Flink Data的常用转换方式：Map、FlatMap、Filter、KeyBy、Reduce、Fold、Aggregations、Window、WindowAll、Union、Window Join、Split、Select、Project
 
 --- 
 
@@ -260,22 +259,56 @@ SlidingEventTimeWindows.of(Time.seconds(10), Time.seconds(5))
 SlidingProcessingTimeWindows.of(Time.seconds(10), Time.seconds(5))
 ```
 
-###   数据是否重叠或遗漏
+### 数据是否重叠或遗漏
  - 如果size = interval,那么就会形成tumbling-window(无重叠数据)
  - 如果size > interval,那么就会形成sliding-window(有重叠数据)
  - 如果size < interval,那么这种窗口将会丢失数据。比如每5秒钟，统计过去3秒的通过路口汽车的数据，将会漏掉2秒钟的数据。
+
+### Window与WindowAll的区别:
+ - Window在已经分区的KeyedStreams上定义,WindowAll在DataStreams上定义
+ - WindowAll将所有流事件分组,这是非并行转换。所有记录将被收集在windowAll运算符的一项任务中
+
 
 ---
 
 # Apache Flink 具有三个不同的时间概念，即处理时间(processing time), 事件时间(event time)和进入时间(ingestion time)
 ![](https://note.youdao.com/yws/public/resource/5493c5d21690866a5e247cc21655ae14/xmlnote/EB1962BA1C60479C97CDF726DDFA5CE2/109725)
 
-- 处理时间(processing time)：处理时间是指执行相应操作的机器的系统时间。当流处理程序基于处理时间运行时，所有基于时间的操作（如时间窗口）将使用运行相应运算符的机器的系统时钟。 每小时处理时间窗口将包括在系统时钟指示整个小时之间到达特定运算符的所有记录。 例如，如果应用程序在上午9:15开始运行，则第一个每小时处理时间窗口将包括在上午9:15到10:00之间处理的事件，下一个窗口将包括在上午10:00到11:00之间处理的事件，以此类推。 处理时间是最简单的时间概念，不需要流和机器之间的协调。 它提供最佳性能和最低延迟。 但是，在分布式和异步环境中，处理时间不提供确定性，因为它容易受到记录到达系统的速度（例如从消息队列），记录在系统内的运算符之间流动的速度的影响，以及停电（计划或其他）。以实际的operator的systemTime为标准
+### 处理时间(processing time)：处理时间是指执行相应操作的机器的系统时间。当流处理程序基于处理时间运行时，所有基于时间的操作（如时间窗口）将使用运行相应运算符的机器的系统时钟。 每小时处理时间窗口将包括在系统时钟指示整个小时之间到达特定运算符的所有记录。 例如，如果应用程序在上午9:15开始运行，则第一个每小时处理时间窗口将包括在上午9:15到10:00之间处理的事件，下一个窗口将包括在上午10:00到11:00之间处理的事件，以此类推。 处理时间是最简单的时间概念，不需要流和机器之间的协调。 它提供最佳性能和最低延迟。 但是，在分布式和异步环境中，处理时间不提供确定性，因为它容易受到记录到达系统的速度（例如从消息队列），记录在系统内的运算符之间流动的速度的影响，以及停电（计划或其他）。以实际的operator的systemTime为标准，默认情况下，Flink将使用处理时间。基于时间的窗口分配器（包括会话窗口）具有事件时间和处理时间两种风格。这两种类型的时间窗口之间存在重大折衷。使用处理时间窗，您必须接受以下限制：
+  - 无法正确处理历史数据
+  - 无法正确处理乱序数据
+  - 结果将是不确定的
+  - 但具有较低延迟的优势。
 
-- 事件时间(event time)：事件时间是每个事件在其生产设备上发生的时间。此时间通常在进入Flink之前嵌入记录中，并且可以从每个记录中提取该事件时间戳。 在事件时间，时间的进展取决于数据，而不是任何时钟。 事件时间程序必须指定如何生成事件时间水印，这是表示事件时间进度的机制。 消息本身就应该携带EventTime
+### 事件时间(event time)：事件时间是每个事件在其生产设备上发生的时间。此时间通常在进入Flink之前嵌入记录中，并且可以从每个记录中提取该事件时间戳。 在事件时间，时间的进展取决于数据，而不是任何时钟。 事件时间程序必须指定如何生成事件时间水印，这是表示事件时间进度的机制。 消息本身就应该携带EventTime
+  - 默认情况下，使用事件时间窗口时将删除较晚的事件。窗口API的两个可选部分使您可以对此进行更多控制。可以使用称为Side Outputs的机制安排将要删除的事件收集到备用输出流中
+```java
+OutputTag<Event> lateTag = new OutputTag<Event>("late"){};
+SingleOutputStreamOperator<Event> result = stream.
+    .keyBy(...)
+    .window(...)
+    .sideOutputLateData(lateTag)
+    .process(...);
+DataStream<Event> lateStream = result.getSideOutput(lateTag);
+```
+  - 还可以指定允许延迟的时间间隔，在此间隔内，延迟事件将继续分配给适当的窗口（其状态将被保留）。默认情况下，每个延迟事件都会导致再次调用window函数（有时称为延迟触发）。默认情况下，允许的延迟为0。换句话说，水印后面的元素将被删除（或发送到侧面输出）。
+```java
+stream.
+    .keyBy(...)
+    .window(...)
+    .allowedLateness(Time.seconds(10))
+    .process(...);
+//当允许的延迟大于零时，只有那些太晚以至于将被丢弃的事件才被发送到侧面输出（如果已配置）。
+```
 
-- 进入时间(Ingestion time): 进入时间是事件进入Flink的时间。 在源运算符处，每个记录将源的当前时间作为时间戳，并且基于时间的操作（如时间窗口）引用该时间戳。进入时间在概念上位于事件时间和处理时间之间。与处理时间相比，它代价稍高，但可以提供更可预测的结果。 因为进入时间使用稳定的时间戳（在源处分配一次），所以对记录的不同窗口操作将引用相同的时间戳，而在处理时间中，每个窗口操作符可以将记录分配给不同的窗口（基于本地系统时钟和 任何传输延误）。与事件时间相比，进入时间程序无法处理任何无序事件或延迟数据，但程序不必指定如何生成水印。在内部，摄取时间与事件时间非常相似，但具有自动分配时间戳和自动生成水印功能。以source的systemTime为准
+### 进入时间(Ingestion time): 进入时间是事件进入Flink的时间。 在源运算符处，每个记录将源的当前时间作为时间戳，并且基于时间的操作（如时间窗口）引用该时间戳。进入时间在概念上位于事件时间和处理时间之间。与处理时间相比，它代价稍高，但可以提供更可预测的结果。 因为进入时间使用稳定的时间戳（在源处分配一次），所以对记录的不同窗口操作将引用相同的时间戳，而在处理时间中，每个窗口操作符可以将记录分配给不同的窗口（基于本地系统时钟和 任何传输延误）。与事件时间相比，进入时间程序无法处理任何无序事件或延迟数据，但程序不必指定如何生成水印。在内部，摄取时间与事件时间非常相似，但具有自动分配时间戳和自动生成水印功能。以source的systemTime为准
 
+- 水印(Watermake):定义何时停止等待早期事件
+```java
+WatermarkStrategy<Event> strategy = WatermarkStrategy
+        .<Event>forBoundedOutOfOrderness(Duration.ofSeconds(20))
+        .withTimestampAssigner((event, timestamp) -> event.timestamp);
+```
 ---
 
 ### Trigger:即触发器，定义何时或什么情况下移除window,我们可以指定触发器来覆盖WindowAssigner提供的默认触发器。请注意指定的触发器不会添加其他触发条件，但会替换当前触发器。
@@ -375,7 +408,7 @@ lines.filter(new FilterGenreWithGlobalEnv()) //这个函数是自己定义的
 
 ### Flink 中不支持连续的Split/Select 分流操作，要实现连续分流也可以通过其他的方式（split + filter或者side output）来实现
 
-### 使用 side output连续分流
+### 使用旁路输出(side output)连续分流
 ```java
 //要使用 Side Output 的话，你首先需要做的是定义一个 OutputTag 来标识 Side Output，代表这个 Tag 是要收集哪种类型的数据，如果是要收集多种不一样类型的数据，那么你就需要定义多种 OutputTag
 private static final OutputTag<AlertEvent> middleware = new OutputTag<AlertEvent>("MIDDLEWARE") {};
@@ -611,3 +644,15 @@ $\color{red}{异常情况：消息处理速度< 消息的发送速度，发生�
 ![](https://img-blog.csdn.net/20171122094859666?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvbGlndW9odWFCaWdkYXRh/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
   - 如果task 1和task 2运行在不同的工作节点上。一旦缓冲区内的数据被发送出去(TCP Channel)，它就会被回收。在接收端，数据被拷贝到输入缓冲池的缓冲区中，如果没有缓冲区可用，从TCP连接中的数据读取动作将会被中断。输出端通常以watermark机制来保证不会有太多的数据在传输途中。如果有足够的数据已经进入可发送状态，会等到情况稳定到阈值以下才会进行发送。这可以保证没有太多的数据在路上。如果新的数据在消费端没有被消费（因为没有可用的缓冲区），这种情况会降低发送者发送数据的速度。
 
+### 累加器和计数器
+Flink 目前有如下内置累加器。它们每一个都实现了Accumulator接口。每个作业的所有累加器共享一个命名空间。 这样你就可以在作业的不同算子函数中使用相同的累加器。Flink 会在内部合并所有同名累加器。目前，累加器的结果只有在整个作业结束以后才可用.
+- IntCounter, LongCounter 和 DoubleCounter
+- Histogram: 离散数量桶的直方图实现。在内部，它只是一个从整数到整数的映射。你可以用它计算值的分布，例如一个词频统计程序中每行词频的分布。
+```java
+//定义累加器
+private IntCounter numLines = new IntCounter();
+//注册累加器对象，通常在富函数的 open() 方法中
+getRuntimeContext().addAccumulator("num-lines", this.numLines);
+//结果将存储在 JobExecutionResult 对象中，该对象是从执行环境的 execute() 方法返回的
+myJobExecutionResult.getAccumulatorResult("num-lines");
+```
