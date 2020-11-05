@@ -43,6 +43,15 @@ private void cleanUp(Context ctx) throws Exception {
 
 ### FlatMapFunction 可以输出你想要的任意数量的元素，也可以一个都不发。
 
+### AggregateFunction是一个基于中间计算结果状态进行增量计算的函数。由于是迭代计算方式，所以，在窗口处理过程中，不用缓存整个窗口的数据执行效率比较高。
+
+### Window Function分为两类: 增量聚合和全量聚合
+- 增量聚合: 窗口不维护原始数据，只维护中间结果，每次基于中间结果和增量数据进行聚合,如: ReduceFunction、AggregateFunction
+- 全量聚合: 窗口需要维护全部原始数据，窗口触发进行全量聚合,如:ProcessWindowFunction、WindowFunction
+
+
+
+
 # Keyed Streams
 
 ### keyBy()将一个流根据其中的一些属性来进行分区，这样我们可以使所有具有相同属性的事件分到相同的组里。按SQL查询的方式来考虑,相当于GROUP BY,每个keyBy会通过shuffle来为数据流进行重新分区。总体来说这个开销是很大的，它涉及网络通信、序列化和反序列化。KeySelector不仅限于从事件中抽取键。你也可以按想要的方式计算得到键值，只要最终结果是确定的，并且实现了 hashCode() 和 equals()。
