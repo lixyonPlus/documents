@@ -15,8 +15,14 @@
   2. String的特性
     - 不可变。是指String对象一旦生成，则不能再对它进行改变。不可变的主要作用在于当一个对象需要被多线程共享，并且访问频繁时，可以省略同步和锁等待的时间，从而大幅度提高系统性能。不可变模   式是一个可以提高多线程程序的性能，降低多线程程序复杂度的设计模式。
     - 针对常量池的优化。当2个String对象拥有相同的值时，他们只引用常量池中的同一个拷贝。当同一个字符串反复出现时，这个技术可以大幅度节省内存空间。
+
+### String字符串+号与concat拼接字符串
+String字符串+号拼接字符串是将String转成了StringBuilder后，使用其append方法进行处理的。+号属于语法糖
+concat拼接字符串，首先创建了一个字符数组(char[])，长度是已有字符串和待拼接字符串的长度之和，再把两个字符串的值复制到新的字符数组中，并使用这个字符数组创建一个新的String对象并返回。
+
+
 ### StringBufer/StringBuilder
-  - StringBufer和StringBuilder都实现了AbstractStringBuilder抽象类，拥有几乎一致对外提供的调用接口;其底层在内存中的存储方式与String相同，都是以一个有序的字符序列(char类型 的数组)进行存储，不同点是StringBufer/StringBuilder对象的值是可以改变的，并且值改变以后，对象引用不会发生改变;两者对象在构造过程中，首先按照默认大小申请一个字符数组，由 于会不断加入新数据，当超过默认大小后，会创建一个更大的数组，并将原先的数组内容复制过来，再丢弃旧的数组。因此，对于较大对象的扩容会涉及大量的内存复制操作，如果能够预先评 估大小，可提升性能。唯一需要注意的是:StringBufer是线程安全的，但是StringBuilder是线程不安全的。可参看Java标准类库的源代码，StringBufer类中方法定义前面都会有synchronize关键字。为 此，StringBufer的性能要低于StringBuilder。
+  - StringBufer和StringBuilder都实现了AbstractStringBuilder抽象类，拥有几乎一致对外提供的调用接口;其底层在内存中的存储方式与String相同，都是以一个有序的字符序列(char类型的数组)进行存储，不同点是StringBufer/StringBuilder对象的值是可以改变的，并且值改变以后，对象引用不会发生改变;两者对象在构造过程中，首先按照默认大小申请一个字符数组，由 于会不断加入新数据，当超过默认大小后，会创建一个更大的数组，并将原先的数组内容复制过来，再丢弃旧的数组。因此，对于较大对象的扩容会涉及大量的内存复制操作，如果能够预先评 估大小，可提升性能。唯一需要注意的是:StringBufer是线程安全的，但是StringBuilder是线程不安全的。可参看Java标准类库的源代码，StringBufer类中方法定义前面都会有synchronize关键字。为 此，StringBufer的性能要低于StringBuilder。
   - 应用场景 
   1. 在字符串内容不经常发生变化的业务场景优先使用String类。例如:常量声明、少量的字符串拼接操作等。如果有大量的字符串内容拼接，避免使用String与String之间的“+”操作，因为这样会产生大量无用的中间对象，耗费空间且执行效率低下(新建对象、回收对象花费大量时间)。
   2. 在频繁进行字符串的运算(如拼接、替换、删除等)，并且运行在多线程环境下，建议使用StringBufer，例如XML解析、HTTP参数解析与封装。
@@ -51,3 +57,11 @@
   - PhantomReference pr = new PhantomReference (object, queue);
   - 程序可以通过判断引用队列中是否已经加入了虚引用，来了解被引用的对象是否将要被垃圾回收。如果程序发现某个虚引用已经被加入到引用队列，那么就可以在所引用的对象的内存被回收之前采取一些程序行动。
   - 应用场景:可用来跟踪对象被垃圾回收器回收的活动，当一个虚引用关联的对象被垃圾收集器回收之前会收到一条系统通知。
+
+### 增强for循环只是一个语法糖，底层使用while+iterator实现。
+
+### 使用增强for循环删除集合元素时抛出 ConcurrentModificationException 异常：
+之所以会抛出ConcurrentModificationException异常，是因为我们的代码中使用了增强for循环，而在增强for循环实现中，集合遍历是通过iterator进行的，但是元素的add/remove却是直接使用的集合类自己的方法。这就导致iterator在遍历的时候，会发现有一个元素在自己不知不觉的情况下就被删除/添加了，就会抛出一个异常，用来提示用户，可能发生了并发修改!
+
+### SimpleDateFormat非线程安全的原理：
+将SimpleDateFormat声明未静态变量，由于SimpleDateFormat类中有calendar成员变量，多线程环境下format、parse会出现问题。

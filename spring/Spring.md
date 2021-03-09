@@ -4,8 +4,8 @@
 - ConfigurationClassPostProcessor : 
 - DefaultListableBeanFactory：
 - ConfigurationClassEnhancer: cglib代理，基于类实现， （代理名称：xxBySpringCGLIB），BeanMethodInterceptor对目标对象 拦截，保证对象不会重复创建
-- BeanFactoryPostProcessor：后置执行器
-- BeanPostProcess： AOP基于此实现
+- BeanFactoryPostProcessor：BeanFactory后置执行器，BeanFactoryPostProcessor接口是针对bean容器的，它的实现类可以在当前BeanFactory初始化（spring容器加载bean定义文件）后，bean实例化之前修改bean的定义属性，达到影响之后实例化bean的效果。
+- BeanPostProcess： AOP基于此实现，BeanPostProcessor能在spring容器实例化bean之后，在执行bean的初始化方法前后，添加一些自己的处理逻辑。
 
 - BeanFactory定义了 IOC 容器的最基本形式，并提供了 IOC 容器应遵守的的最基本的接口，也就是 Spring IOC所遵守的最底层和最基本的编程规范。在Spring代码中， BeanFactory 只是个接口，并不是 IOC 容器的具体实现，但是 Spring 容器给出了很多种实现，如 DefaultListableBeanFactory 、 XmlBeanFactory 、 ApplicationContext等，都是附加了某种功能的实现。
 
@@ -93,7 +93,7 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 
 ### BeanMethodInterceptor主要作用是：拦截@Bean方法的调用，以确保正确处理@Bean语义。当调用@Bean方法时，就会被以下代码所拦截
 
-### BeanFactoryPostProcessor接口，获取BeanFactory，操作BeanFactory对象，修改BeanDefinition，但不要去实例化bean。
+### BeanFactoryPostProcessor接口，获取BeanFactory，操作BeanFactory对象，修改BeanDefinition，但不去实例化bean。
 
 ### BeanDefinitionRegistryPostProcessor是BeanFactoryPostProcessor的子类，在父类的基础上，增加了新的方法，允许我们获取到BeanDefinitionRegistry，从而编码动态修改BeanDefinition。例如往BeanDefinition中添加一个新的BeanDefinition。
 
