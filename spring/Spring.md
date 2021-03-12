@@ -1,8 +1,7 @@
-# Spring:
+# Spring
 
 - @Configuration 会进行动态代理保证单例，不加会初始化多次，不会生成动态代理。
 - ConfigurationClassPostProcessor : 
-- DefaultListableBeanFactory：
 - ConfigurationClassEnhancer: cglib代理，基于类实现， （代理名称：xxBySpringCGLIB），BeanMethodInterceptor对目标对象 拦截，保证对象不会重复创建
 - BeanFactoryPostProcessor：BeanFactory后置执行器，BeanFactoryPostProcessor接口是针对bean容器的，它的实现类可以在当前BeanFactory初始化（spring容器加载bean定义文件）后，bean实例化之前修改bean的定义属性，达到影响之后实例化bean的效果。
 - BeanPostProcess： AOP基于此实现，BeanPostProcessor能在spring容器实例化bean之后，在执行bean的初始化方法前后，添加一些自己的处理逻辑。
@@ -19,6 +18,23 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
 - ApplicationContext不仅继承了容器的基本实现，还支持一些高级功能，比如：国际化、访问资源、时间机制。
 - Bean的定义在spring中是通过BeanDefinition来描述的。
 
+### Bean通过xml创建过程
+- BeanDefinitionReader读取/解析xml文件生成Document对象，通过BeanDefinitionParserDelegate解析Document对象，生成BeanDefinition,通过DefaultListableBeanFactory注册BeanDefinition。
+
+### 通过xml方式获取Bean获取过程
+DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetBean方法。
+
+
+### 通过注解的方式创建bean的过程
+AnnotatedBeanDefinitionReader解析配置类，生成AnnotatedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器，
+ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器。
+
+### 通过注解的方式启动获取Bean获取过程
+根据传入的类型获取bean的所有名称，过滤候选bean名称，如果bean名称只有一个，那么直接调用AbstractBeanFactory里的doGetBean进行实例化并返回，如果bean名称有多个，则选出主要候选名称或者最高优先级的名称来帮助实例化。如果没有选出可用的名称，则抛出bean定义冲突异常。
+
+
+
+
 
 ### IOC容器初始化过程：
  - 初始化包括Beandefinition的Resource定位、载入、注册三个基本的过程。
@@ -30,6 +46,8 @@ FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自�
  - 2.在<bean>资源中定义lazy-init时，即让bean在解析注册bean时预实例化触发依赖注入。
 
 ### 创建bean：AbstractAutowireCapableBeanFactory实现了ObjectFactory接口，创建容器指定的bean实例，同时还对创建的对象进行初始化。BeanWrapperImpl处理依赖注入
+
+
 
 
 

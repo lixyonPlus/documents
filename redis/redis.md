@@ -152,3 +152,16 @@
 - 7. 若打算使用Redis 的持久化。建议RDB和AOF都开启。其实RDB更适合做数据的备份，留一后手。AOF出问题了，还有RDB。
 
 
+### redis事物
+redis事物不像mysql事物，没有事物隔离性，不保证原子操作，不支持回滚。
+1.开始事物(multi)
+2.命令入队
+3.执行事物(exec)、撤销事物(discard)
+![](https://s3.ax1x.com/2021/03/10/6GM176.png)
+
+
+### redis io模式
+redis属于单线程，使用IO多路复用技术（epoll）完成。
+![](https://s3.ax1x.com/2021/03/10/6GcKiT.md.png)
+IO多路复用技术对比
+![](https://s3.ax1x.com/2021/03/10/6Gc3QJ.md.png)
