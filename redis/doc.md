@@ -1,28 +1,31 @@
-### redis中zset实现排行榜
-```
-//添加玩家分数
-ZADD page_rank 10 user1
-ZADD page_rank 20 user2
-ZADD page_rank 30 user3
-//查询玩家的分数
-ZSCORE page_rank user1
-//按名次查看排行榜(由高到低排序)
-zrevrange page_rank  0 -1 [withscores]
-//按名次查看排行榜(由低到高排序)
-zrange page_rank  0 -1 [withscores]
-//查询前三名玩家分数(由高到低排序)
-zrevrange page_rank 0 2 withscores
-//查看玩家排名(由高到低排序)
-zrevrank page_rank user3
-//增减玩家分数
-zincrby page_rank 100 user1
-//移除玩家
-zrem page_rank user1
-//删除排行榜
-del page_rank
-//如果分数相同，reids按照key字典顺序排序的，可以考虑在分数中加入时间戳
-带时间戳的分数 = 实际分数*10000000000 + (9999999999 – timestamp)
+# redis应用场景： 数据缓存，分布式session，分布式锁。
 
-```
+### 常用的淘汰算法：
+ - FIFO：First In First Out，先进先出。判断被存储的时间，离目前最远的数据优先被淘汰。
+ - LRU：Least Recently Used，最近最少使用。判断最近被使用的时间，目前最远的数据优先被淘汰。
+ - LFU：Least Frequently Used，最不经常使用。在一段时间内，数据被使用次数最少的，优先被淘汰。
+
+### Redis提供的淘汰策略：
+volatile-lru（least recently used）：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰
+volatile-lfu（least frequently used）：从已设置过期时间的数据集(server.db[i].expires)中挑选最不经常使用的数据淘汰
+volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰
+volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰
+allkeys-lru（least recently used）：当内存不足以容纳新写入数据时，在键空间中，移除最近最少使用的 key（这个是最常用的）
+allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰
+allkeys-lfu（least frequently used）：当内存不足以容纳新写入数据时，在键空间中，移除最不经常使用的 key
+no-eviction：禁止驱逐数据，也就是说当内存不足以容纳新写入数据时，新写入操作会报错。这个应该没人使用吧！
 
 
+### redis事物
+redis事物不像mysql事物，没有事物隔离性，不保证原子操作，不支持回滚。
+1.开始事物(multi)
+2.命令入队
+3.执行事物(exec)、撤销事物(discard)
+![](https://s3.ax1x.com/2021/03/10/6GM176.png)
+
+
+### redis io模式
+redis属于单线程，使用IO多路复用技术（epoll）完成。
+![](https://s3.ax1x.com/2021/03/10/6GcKiT.md.png)
+IO多路复用技术对比
+![](https://s3.ax1x.com/2021/03/10/6Gc3QJ.md.png)

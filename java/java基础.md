@@ -65,3 +65,6 @@ concat拼接字符串，首先创建了一个字符数组(char[])，长度是已
 
 ### SimpleDateFormat非线程安全的原理：
 将SimpleDateFormat声明未静态变量，由于SimpleDateFormat类中有calendar成员变量，多线程环境下format、parse会出现问题。
+
+### ThreadLocal为什么会发生内存泄漏
+ThreadLocalMap中使用的key为ThreadLocal的弱引用,而value是强引用。所以，如果ThreadLocal没有被外部强引用的情况下，在垃圾回收的时候，key会被清理掉，而value不会被清理掉。这样一来，ThreadLocalMap中就会出现key为null的Entry。假如我们不做任何措施的话，value永远无法被GC回收，这个时候就可能会产生内存泄露。ThreadLocalMap实现中已经考虑了这种情况，在调用set()、get()、remove() 方法的时候，会清理掉key为null的记录。使用完 ThreadLocal方法后 最好手动调用remove()方法。
