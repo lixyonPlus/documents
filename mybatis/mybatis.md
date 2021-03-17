@@ -2,7 +2,7 @@
 
 - Statement（namespace + id 确定一条sql）。
 - mybatis加载mapper有4种方式。(package、resource、url、calss)，package优先级最高。
-- mybatis有3种执行器（BatchExector、ResultExector、SimpleExector）。默认是SimpleExector
+- mybatis有3种执行器（BatchExector、ReuseExector、SimpleExector）。默认是SimpleExector
 - CachingExector:内部使用SimpleExector来执行【装饰器模式】，主要是做缓存处理。
 - xml与注解都有sql语句，以注解优先。
 - mybatis自带逻辑分页（RowBound），对查询出的数据在内存中做分页。

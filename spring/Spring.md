@@ -2,18 +2,19 @@
 
 - @Configuration 会进行动态代理保证单例，不加会初始化多次，不会生成动态代理。
 - ConfigurationClassPostProcessor : 
-- ConfigurationClassEnhancer: cglib代理，基于类实现， （代理名称：xxBySpringCGLIB），BeanMethodInterceptor对目标对象 拦截，保证对象不会重复创建
+- ConfigurationClassEnhancer: cglib代理，基于类实现， （代理名称：xxBySpringCGLIB），BeanMethodInterceptor对目标对象拦截，保证对象不会重复创建
 - BeanFactoryPostProcessor：BeanFactory后置执行器，BeanFactoryPostProcessor接口是针对bean容器的，它的实现类可以在当前BeanFactory初始化（spring容器加载bean定义文件）后，bean实例化之前修改bean的定义属性，达到影响之后实例化bean的效果。
 - BeanPostProcess： AOP基于此实现，BeanPostProcessor能在spring容器实例化bean之后，在执行bean的初始化方法前后，添加一些自己的处理逻辑。
 
-- BeanFactory定义了 IOC 容器的最基本形式，并提供了 IOC 容器应遵守的的最基本的接口，也就是 Spring IOC所遵守的最底层和最基本的编程规范。在Spring代码中， BeanFactory 只是个接口，并不是 IOC 容器的具体实现，但是 Spring 容器给出了很多种实现，如 DefaultListableBeanFactory 、 XmlBeanFactory 、 ApplicationContext等，都是附加了某种功能的实现。
+- BeanFactory定义了IOC容器的最基本形式，并提供了IOC容器应遵守的的最基本的接口，也就是Spring IOC所遵守的最底层和最基本的编程规范。在Spring代码中， BeanFactory 只是个接口，并不是 IOC 容器的具体实现，但是 Spring 容器给出了很多种实现，如 DefaultListableBeanFactory 、 XmlBeanFactory 、 ApplicationContext等，都是附加了某种功能的实现。
 
-- 一般情况下，Spring 通过反射机制利用 <bean> 的 class 属性指定实现类实例化 Bean。在某些情况下，实例化Bean 过程比较复杂，如果按照传统的方式，则需要在 <bean> 中提供大量的配置信息。配置方式的灵活性是受限的，这时采用编码的方式可能会得到一个简单的方案。Spring 为此提供了一个org.springframework.bean.factory.FactoryBean 的工厂类接口，用户可以通过实现该接口定制实例化 Bean 的逻辑。
-FactoryBean接口对于 Spring 框架来说占用重要的地位， Spring 自身就提供了 70 多个 FactoryBean 的实现。它们隐藏了实例化一些复杂 Bean 的细节，给上层应用带来了便利。从 Spring 3.0 开始， FactoryBean 开始支持泛型，即接口声明改为 FactoryBean<T> 的形式：区别：
- - BeanFactory是个 Factory ，也就是 IOC 容器或对象工厂， FactoryBean 是个 Bean 。在 Spring 中，所有的Bean 都是由 BeanFactory( 也就是 IOC 容器 ) 来进行管理的。但对 FactoryBean 而言，这个 Bean 不是简单的 Bean，而是一个能生产或者修饰对象生成的工厂 Bean, 它的实现与设计模式中的工厂模式和修饰器模式类似。
+- 一般情况下Spring通过反射机制利用 <bean> 的class属性指定实现类实例化Bean。在某些情况下，实例化Bean过程比较复杂，如果按照传统的方式，则需要在 <bean> 中提供大量的配置信息。配置方式的灵活性是受限的，这时采用编码的方式可能会得到一个简单的方案。Spring 为此提供了一个org.springframework.bean.factory.FactoryBean 的工厂类接口，用户可以通过实现该接口定制实例化 Bean 的逻辑。FactoryBean接口对于Spring框架来说占用重要的地位，Spring自身就提供了70多个FactoryBean的实现。它们隐藏了实例化一些复杂Bean的细节，给上层应用带来了便利。从Spring3.0开始， FactoryBean开始支持泛型，即接口声明改为FactoryBean<T> 的形式
 
+### BeanFactory与FactoryBean的区别
+ - BeanFactory是个Factory ，也就是IOC容器或对象工厂， FactoryBean是个Bean 。在 Spring 中，所有的Bean 都是由 BeanFactory( 也就是 IOC 容器 ) 来进行管理的。但对FactoryBean而言，这个Bean不是简单的Bean，而是一个能生产或者修饰对象生成的工厂Bean, 它的实现与设计模式中的工厂模式和修饰器模式类似。
 
 - BeanFactory是一个最顶层的接口，他定义了IOC容器的基本功能规范，他有三个子类：ListableBeanFactory、HierarchicalBeanFactory、AutowireCapableBeanFactory但是最终的默认实现类是DefaultListableBeanFactory它实现了所有接口。ListableBeanFactory表示Bean是可列表的，HierarchicalBeanFactory表示bean是有继承关系的，AutowireCapableBeanFactory表示bean自动装配规则，他们共同定义了bean的集合，bean之间的关系和bean的行为。
+
 - XMlBeanFactory就是对DefaultListableBeanFactory的实现，这个IOC容器可以读取XML配置BeanDefinition（就是xml配置文件中对bean的配置）。
 - ApplicationContext不仅继承了容器的基本实现，还支持一些高级功能，比如：国际化、访问资源、时间机制。
 - Bean的定义在spring中是通过BeanDefinition来描述的。
@@ -29,27 +30,19 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 AnnotatedBeanDefinitionReader解析配置类，生成AnnotatedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器，
 ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器。
 
-### 通过注解的方式启动获取Bean获取过程
+### 通过注解的方式启动获取Bean获取过程(@autowired通过类型，@resource通过名称,@aualifier通过名称)
 根据传入的类型获取bean的所有名称，过滤候选bean名称，如果bean名称只有一个，那么直接调用AbstractBeanFactory里的doGetBean进行实例化并返回，如果bean名称有多个，则选出主要候选名称或者最高优先级的名称来帮助实例化。如果没有选出可用的名称，则抛出bean定义冲突异常。
-
-
-
-
 
 ### IOC容器初始化过程：
  - 初始化包括Beandefinition的Resource定位、载入、注册三个基本的过程。
- - ①BeanFactroy采用的是延迟加载形式来注入Bean的，即只有在使用到某个Bean时(调用getBean())，才对该Bean进行加载实例化。这样，我们就不能发现一些存在的Spring的配置问题。如果Bean的某一个属性没有注入，BeanFacotry加载后，直至第一次使用调用getBean方法才会抛出异常。
- - ②ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。 ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
+  - BeanFactroy采用的是延迟加载形式来注入Bean的，即只有在使用到某个Bean时(调用getBean())，才对该Bean进行加载实例化。这样，我们就不能发现一些存在的Spring的配置问题。如果Bean的某一个属性没有注入，BeanFacotry加载后，直至第一次使用调用getBean方法才会抛出异常。
+  - ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。 ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
 
 ### IOC容器什么时候依赖注入？
  - 1.第一次getBean()的时候，触发依赖注入。
  - 2.在<bean>资源中定义lazy-init时，即让bean在解析注册bean时预实例化触发依赖注入。
 
 ### 创建bean：AbstractAutowireCapableBeanFactory实现了ObjectFactory接口，创建容器指定的bean实例，同时还对创建的对象进行初始化。BeanWrapperImpl处理依赖注入
-
-
-
-
 
 ### AOP 是基于动态代理模式实现的，具体实现上可以基于JDK动态代理或者Cglib动态代理。其中 JDK 动态代理只能代理实现了接口的对象，而 Cglib 动态代理则无此限制。所以在为没有实现接口的对象生成代理时，只能使用 Cglib。
  - 切面、切入点、连接点、通知、目标对象、aop代理
@@ -59,7 +52,7 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
  - 3. 如果符合，代理生成器将切面逻辑 Advice 织入 bean 相关方法中，并为目标 bean 生成代理对象
  - 4. 将生成的 bean 的代理对象返回给 BeanFactory 容器，到此，AOP 逻辑执行结束
  
-### springmvc优化点：每次发起请求时，springmvc没有对请求地址进行缓存。
+### springmvc优化点：每次发起请求时，springmvc没有对请求地址进行缓存
 
 ### AbstractAutoProxyCreator:spring代理对象顶级抽象类
 
@@ -105,7 +98,7 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 
 ### 当@Bean方法在没有使用@Configuration注解的类中声明时称之为lite @Bean mode，不会被动态代理,否则称为full @Bean mode，会被动态代理
 
-### 被CGLIB的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能不能被声明为private和final，不然在启动时Spring会直接报错。
+### 被CGLIB的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能被声明为private和final，不然在启动时Spring会直接报错。
 
 ### OrderComparator比较器进行排序的时候，若2个对象中有一个对象实现了PriorityOrdered接口，那么这个对象的优先级更高。若2个对象都是PriorityOrdered或Ordered接口的实现类，那么比较Ordered接口的getOrder方法得到order值，值越低，优先级越高。
 
@@ -155,3 +148,24 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 - @Component通常是通过类路径扫描来自动侦测以及自动装配到Spring容器中（我们可以使用 @ComponentScan 注解定义要扫描的路径从中找出标识了需要装配的类自动装配到 Spring 的 bean 容器中）。@Bean 注解通常是我们在标有该注解的方法中定义产生这个 bean,@Bean告诉了Spring这是某个类的示例，当我需要用它的时候还给我。
 - @Bean 注解比 Component 注解的自定义性更强，而且很多地方我们只能通过 @Bean 注解来注册bean。比如当我们引用第三方库中的类需要装配到 Spring容器时，则只能通过 @Bean来实现。
   
+### @Transactional失效的几种情况
+1. 一个有@Transactional的方法被没有@Transactional方法调用时，会导致Transactional作用失效。也是最容易出现的情况。
+2. 对非public方法进行事务注解
+3. Transactional事务配置属性中的propagation属性配置的问题。当propagation属性配置为：
+TransactionDefinition.PROPAGATION_SUPPORTS：如果当前存在事务，则加入该事务；如果当前没有事务，则以非事务的方式继续运行。TransactionDefinition.PROPAGATION_NOT_SUPPORTED：以非事务方式运行，如果当前存在事务，则把当前事务挂起。TransactionDefinition.PROPAGATION_NEVER：以非事务方式运行，如果当前存在事务，则抛出异常
+4. 在一个类中A方法被事务注释，B方法也被事务注释。A方法调用B方法时，执行B方法报错，但是异常被A catch 住，此时事务也会失效。
+```
+@Transactional
+public void A(){
+  try{
+    this.B();
+  }catch(Exception e){
+    logger.error();
+  }
+}
+
+@Transactional
+public void B(){
+  system.out.print(1/0);
+}
+```

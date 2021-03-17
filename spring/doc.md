@@ -19,5 +19,5 @@ public class Demo {
 >  解决方式，添加代理：  
 ```
         Demo demoProxy= ((Demo)AopContext.currentProxy());
-        demoProxy.b();
+        demoProxy.a();
 ```

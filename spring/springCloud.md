@@ -62,7 +62,7 @@
 
   #### 轮询算法：第几次请求 % 集群中该服务实例总数 = 实际调用服务实例下标，每次重启按1计算。
 
-  #### 使用RestTemplate访问微服务需要加入
+#### 使用RestTemplate访问微服务需要加入
 
     ```java
       @LoadBalance
@@ -72,31 +72,28 @@
       }
     ```
 
-  # Hystrix：
-    - 初始化顺序： @EnableCiruitBreaker -> EnableCircuitBreakerImportSelector -> HystrixCircuitBreakerConfiguration
-   ### HystrixCircuitBreakerConfiguration
+# Hystrix：
+- 初始化顺序： @EnableCiruitBreaker -> EnableCircuitBreakerImportSelector -> HystrixCircuitBreakerConfiguration
+ ### HystrixCircuitBreakerConfiguration
       自动装配Hystrix组件: 
           Hystrix命令切面: HystrixCommandAspect
           Hystrix Endpoint: HystrixStreamEndpoint
           Hystrix指标: HystrixMetricsPollerConfiguration
-  ### HystrixCommandAspect
+### HystrixCommandAspect
       拦截标注@HystrixCommand或@HystrixCollapser的方法(@Aroud)
       生成拦截方法原信息(MetaHolderFactory)
       生成HystrixInvokable(HystrixCommandFactory)
       选择执行模式(Observable或非Observable)
-  ### SpringFactoryImportSelector
+### SpringFactoryImportSelector
       选择/META-INF/spring.factories中注解类型（泛型）,所配置的SpringConfiguration类
         EnableCircuitBreakerImportSelector、EnableDiscoveryClientImportSelector
 
-  ### 使用@EnableHystrix 启用Hystrix(注意：@EnableHystrix注解包含@EnableCircuitBreaker注解)
-
+### 使用@EnableHystrix启用Hystrix(注意：@EnableHystrix注解包含@EnableCircuitBreaker注解)
     1.@DefaultProperties(defaultFallback = "fallback")+@HystrixCommand 提供公用的降级处理
     2.@HystrixCommand单个方法配置
     3.feign中@FeignClient(name = "service_id",fallback = xxxFallback.class)实现业务接口提供降级处理
     4.feign中@FeignClient(name = "service_id",fallbackFactory=xxxFactory.classs)实现FallbackFactory接口提供降级处理
-
-
-    ```java
+```java
       注意：@HystrixCommand不能用在feign接口中，feign接口配置降级处理需要通过@FeignClient(name = "service_id", fallback = xxxFallback.class,fallbackFactory=xxxFactory.classs)[fallback与fallbackFactory任选一个],并且实现该业务接口或实现FallbackFactory，相关降级策略需要在yml配置。
 
       @HystrixCommand(
@@ -119,8 +116,9 @@
     public Collection<User> fallbackForGetUsers() {
         return Collections.emptyList();
     }
+```
 
-  #### HystrixCommand与HystrixObservableCommand区别：
+#### HystrixCommand与HystrixObservableCommand区别：
       HystrixCommand用在依赖服务返回单个操作结果的时候。有两种执行方式
 　　    - execute():同步执行。从依赖的服务返回一个单一的结果对象，或是在发生错误的时候抛出异常。
 　　    - queue():异步执行。直接返回一个Future对象，其中包含了服务执行结束时要返回的单一结果对象。
@@ -128,19 +126,14 @@
 　　    - observe():返回Observable对象，他代表了操作的多个结果，他是一个HotObservable
 　　    - toObservable():同样返回Observable对象，也代表了操作多个结果，但它返回的是一个Cold Observable。
 
-  #### 当一个服务调用另一个服务由于网络原因或自身原因出现问题，调用者就会等待被调用者的响应 当更多的服务请求到这些资源导致更多的请求等待，发生连锁效应（雪崩效应）
-  - 断路器有完全打开状态:一段时间内 达到一定的次数无法调用 并且多次监测没有恢复的迹象 断路器完全打开 那么下次请求就不会请求到该服务
-  - 半开:短时间内 有恢复迹象 断路器会将部分请求发给该服务，正常调用时 断路器关闭
-  - 关闭：当服务一直处于正常状态 能正常调用
-
-  #### 服务熔断就是相当于我们电闸的保险丝,一旦发生服务雪崩的,就会熔断整个服务,通过维护一个自己的线程池,当线程达到阈值的时候就启动服务降级,如果其他请求继续访问就直接返回fallback的默认值。
+#### 当一个服务调用另一个服务由于网络原因或自身原因出现问题，调用者就会等待被调用者的响应 当更多的服务请求到这些资源导致更多的请求等待，发生连锁效应（雪崩效应）,服务熔断就是相当于我们电闸的保险丝,一旦发生服务雪崩的,就会熔断整个服务,通过维护一个自己的线程池,当线程达到阈值的时候就启动服务降级,如果其他请求继续访问就直接返回fallback的默认值。
   - 熔断状态：打开、关闭、半开
   - 熔断器原理
     - 开始时断路器处于关闭状态(Closed)。
     - 如果调用持续出错、超时或失败率超过一定限制，断路器打开进入熔断状态，后续一段时间内的所有请求都会被直接拒绝。
     -  一段时间以后，保护器会尝试进入半熔断状态(Half-Open)，允许少量请求进来尝试；如果调用仍然失败，则回到熔断状态，如果调用成功，则回到电路闭合状态;
 
-  ### Hystrix整个工作流如下：
+### Hystrix整个工作流如下：
     1.构造一个 HystrixCommand或HystrixObservableCommand对象，用于封装请求，并在构造方法配置请求被执行需要的参数；
     2.执行命令，Hystrix提供了4种执行命令的方法：execute()和queue() 适用于HystrixCommand对象，而observe()和toObservable()适用于HystrixObservableCommand对象。
     3.判断是否使用缓存响应请求，若启用了缓存，且缓存可用，直接使用缓存响应请求。Hystrix支持请求缓存，但需要用户自定义启动；
@@ -151,18 +144,17 @@
     8.走Fallback备用逻辑
     9.返回请求响应
 
-  ### 熔断器流程：
+### 熔断器流程：
     Hystrix在运行过程中会向每个commandKey对应的熔断器报告成功、失败、超时和拒绝的状态，熔断器维护并统计这些数据，并根据这些统计信息来决策熔断开关是否打开。如果打开，熔断后续请求，快速返回。隔一段时间（默认是5s）之后熔断器尝试半开，放入一部分流量请求进来，相当于对依赖服务进行一次健康检查，如果请求成功，熔断器关闭。
 
 
-  #### circuitBreaker.enable:是否开启熔断器。
-  #### circuitBreaker.errorThresholdPercentage：错误率，默认值50%，例如一段时间（10s）内有100个请求，其中有54个超时或者异常，那么这段时间内的错误率是54%，大于了默认值50%，这种情况下会触发熔断器打开。
-  #### circuitBreaker.requestVolumeThreshold：默认值20。含义是一段时间内至少有20个请求才进行errorThresholdPercentage计算。比如一段时间了有19个请求，且这些请求全部失败了，错误率是100%，但熔断器不会打开，总请求数不满足20。
-  #### circuitBreaker.sleepWindowInMilliseconds：半开状态试探睡眠时间，默认值5000ms。如：当熔断器开启5000ms之后，会尝试放过去一部分流量进行试探，确定依赖服务是否恢复。
+#### circuitBreaker.enable:是否开启熔断器。
+#### circuitBreaker.errorThresholdPercentage：错误率，默认值50%，例如一段时间（10s）内有100个请求，其中有54个超时或者异常，那么这段时间内的错误率是54%，大于了默认值50%，这种情况下会触发熔断器打开。
+#### circuitBreaker.requestVolumeThreshold：默认值20。含义是一段时间内至少有20个请求才进行errorThresholdPercentage计算。比如一段时间了有19个请求，且这些请求全部失败了，错误率是100%，但熔断器不会打开，总请求数不满足20。
+#### circuitBreaker.sleepWindowInMilliseconds：半开状态试探睡眠时间，默认值5000ms。如：当熔断器开启5000ms之后，会尝试放过去一部分流量进行试探，确定依赖服务是否恢复。
+#### 一定时间内请求次数达到次数，且错误率大于错误率，开启断路器。
 
-  #### 一定时间内请求次数达到次数，且错误率大于错误率，开启断路器。
-
-   ```java
+```java
 
      /**
      * 熔断处理
@@ -188,7 +180,7 @@
         return "服务熔断";
     }
 
-   ``` 
+  ``` 
 
 
   # zuul:
@@ -241,8 +233,6 @@
     - HTTP超时、跨域、tls/ssl
 
 
-
-
  # eureka-server:
      1. 错误：  Instances currently registered with Eureka
       解决问题：
@@ -254,9 +244,9 @@
         ## 解决 Peer / 集群 连接问题
         eureka.instance.hostname = localhost
         eureka.client.serviceUrl.defaultZone = http://${eureka.instance.hostname}:${server.port}/eureka
-    1. @EnableDiscoveryClient与@EnableEurekaClient区别
+    1. @EnableDiscoveryClient与@EnableEurekaClient区别(高版本已删除@EnableEurekaClient)
       注解@EnableEurekaClient上有@EnableDiscoveryClient注解，可以说基本就是@EnableEurekaClient有@EnableDiscoveryClient的功能，其实@EnableEurekaClient注解就是一种方便使用eureka的注解而已，可以说使用其他的注册中心后，都可以使用@EnableDiscoveryClient注解，但是使用@EnableEurekaClient的情景，就是在服务采用eureka作为注册中心的时候，使用场景较为单一。
-
+    
     DiscoveryClient:获取eureka注册所有实例信息
     zookeeper做服务注册中心时，注册为临时节点，服务下线直接剔除。
 
