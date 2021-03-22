@@ -1,6 +1,19 @@
 
-## MVCC(Mutil-Version Concurrency Control)，就是多版本并发控制。MVCC 是一种并发控制的方法，在Mysql的InnoDB引擎中就是指在已提交读(READ COMMITTD)和可重复读(REPEATABLE READ)这两种隔离级别下的事务对于SELECT操作会访问版本链中的记录的过程。这就使得别的事务可以修改这条记录，每次修改都会在版本链中记录。SELECT可以去版本链中拿记录，这就实现了读-写，写-读的并发执行，提升了系统的性能。
+### mysql中如何解决幻读？
+- 在快照读读情况下，mysql通过mvcc来避免幻读。
+- 在当前读读情况下，mysql通过next-key来避免幻读
 
+### 什么是快照读和当前读？
+- 快照读：简单的select操作，属于快照读，不加锁。(当然，也有例外，下面会分析)
+ - select * from table where ?;
+- 当前读：特殊的读操作，插入/更新/删除操作，属于当前读，需要加锁。
+  - select * from table where ? lock in share mode;
+  - select * from table where ? for update;
+  - insert into table values (…);
+  - update table set ? where ?;
+  - delete from table where ?;
+
+## MVCC(Mutil-Version Concurrency Control)，就是多版本并发控制。MVCC 是一种并发控制的方法，在Mysql的InnoDB引擎中就是指在已提交读(READ COMMITTD)和可重复读(REPEATABLE READ)这两种隔离级别下的事务对于SELECT操作会访问版本链中的记录的过程。这就使得别的事务可以修改这条记录，每次修改都会在版本链中记录。SELECT可以去版本链中拿记录，这就实现了读-写，写-读的并发执行，提升了系统的性能。
 
 ## 版本链：在InnoDB引擎表中，它的聚簇索引记录中有两个必要的隐藏列。
 1. trx_id :这个id用来存储的每次对某条聚簇索引记录进行修改的时候的事务id。
@@ -54,7 +67,6 @@
 在InnoDB中COUNT(*)和COUNT(1)实现上没有区别，而且效率一样。
 但是COUNT( 字段 )需要进行字段的非NULL判断，所以效率会低一些。
 
-### 在mysql中，提供了两种事务隔离技术，第一个是mvcc，第二个是next-key技术。这个在使用不同的语句的时候可以动态选择。不加lock inshare mode之类的就使用mvcc。否则使用next-key。mvcc的优势是不加锁，并发性高。缺点是不是实时数据。next-key的优势是获取实时数据，但是需要加锁。同时需要注意几点：1.事务的快照时间点是以第一个select来确认的。所以即便事务先开始。但是select在后面的事务的update之类的语句后进行，那么它是可以获取后面的事务的对应的数据。2.mysql中数据的存放还是会通过版本记录一系列的历史数据，这样，可以根据版本查找数据。
 
 ### sql执行流程
 1. 客户端发送sql给服务器
