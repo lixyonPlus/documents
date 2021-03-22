@@ -1,3 +1,4 @@
+```
 node {
     def mvnHome = tool 'maven3' //引入maven
     def build_branch = params.build_branch.split("/")[1]
@@ -37,3 +38,4 @@ node {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'test.xxx.com', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'cd workspace && ./deploy.sh restart service-user test 512M', execTimeout: 600000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: 'target/', sourceFiles: 'target/service-user.jar')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
     }
 }
+```
