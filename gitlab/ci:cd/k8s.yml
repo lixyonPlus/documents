@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: !PROJECT_NAME
+  labels:
+    app: !PROJECT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: !PROJECT_NAME
+  template:
+    metadata:
+      name: !PROJECT_NAME
+      labels:
+        app: !PROJECT_NAME
+    spec:
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: dustess-registry-ci-key
+      nodeSelector:
+        cloud: private
+      containers:
+        - name: !PROJECT_NAME
+          image: registry-in.dustess.com:9000/!DOCKER_IMAGE_NAME:!IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+#          livenessProbe:
+#            httpGet:
+#              path: /!PROJECT_NAME/actuator/health
+#              port: 9999
+#              scheme: HTTP
+#          readinessProbe:
+#            httpGet:
+#              path: /!PROJECT_NAME/actuator/health
+#              port: 9999
+#              scheme: HTTP
+          resources:
+            limits:
+              cpu: '2'
+              memory: "1Gi"
+            requests:
+              cpu: '200m'
+              memory: '256Mi'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: !PROJECT_NAME
+  labels:
+    app: !PROJECT_NAME
+    svc: !PROJECT_NAME
+spec:
+  selector:
+    app: !PROJECT_NAME
+  ports:
+    - port: 8080
+      name: http
+      targetPort: 8080
