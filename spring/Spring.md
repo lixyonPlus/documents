@@ -10,6 +10,9 @@
 
 - 一般情况下Spring通过反射机制利用 <bean> 的class属性指定实现类实例化Bean。在某些情况下，实例化Bean过程比较复杂，如果按照传统的方式，则需要在 <bean> 中提供大量的配置信息。配置方式的灵活性是受限的，这时采用编码的方式可能会得到一个简单的方案。Spring 为此提供了一个org.springframework.bean.factory.FactoryBean 的工厂类接口，用户可以通过实现该接口定制实例化 Bean 的逻辑。FactoryBean接口对于Spring框架来说占用重要的地位，Spring自身就提供了70多个FactoryBean的实现。它们隐藏了实例化一些复杂Bean的细节，给上层应用带来了便利。从Spring3.0开始， FactoryBean开始支持泛型，即接口声明改为FactoryBean<T> 的形式
 
+### Spring Ioc中为什么使用Classloader，而不是Class.forName（）
+  - 因为Calss.forName()方法会初始化类，如果spring使用就没办法实现延迟加载
+
 ### BeanFactory与FactoryBean的区别
  - BeanFactory是个Factory ，也就是IOC容器或对象工厂， FactoryBean是个Bean 。在 Spring 中，所有的Bean 都是由 BeanFactory( 也就是 IOC 容器 ) 来进行管理的。但对FactoryBean而言，这个Bean不是简单的Bean，而是一个能生产或者修饰对象生成的工厂Bean, 它的实现与设计模式中的工厂模式和修饰器模式类似。
 
@@ -18,6 +21,10 @@
 - XMlBeanFactory就是对DefaultListableBeanFactory的实现，这个IOC容器可以读取XML配置BeanDefinition（就是xml配置文件中对bean的配置）。
 - ApplicationContext不仅继承了容器的基本实现，还支持一些高级功能，比如：国际化、访问资源、时间机制。
 - Bean的定义在spring中是通过BeanDefinition来描述的。
+
+### ObjectFactory 延时查找
+
+
 
 ### Bean通过xml创建过程
 - BeanDefinitionReader读取/解析xml文件生成Document对象，通过BeanDefinitionParserDelegate解析Document对象，生成BeanDefinition,通过DefaultListableBeanFactory注册BeanDefinition。
@@ -37,6 +44,10 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
  - 初始化包括Beandefinition的Resource定位、载入、注册三个基本的过程。
   - BeanFactroy采用的是延迟加载形式来注入Bean的，即只有在使用到某个Bean时(调用getBean())，才对该Bean进行加载实例化。这样，我们就不能发现一些存在的Spring的配置问题。如果Bean的某一个属性没有注入，BeanFacotry加载后，直至第一次使用调用getBean方法才会抛出异常。
   - ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。 ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
+
+### IOC实现方式
+  - 依赖查找
+  - 依赖注入
 
 ### IOC容器什么时候依赖注入？
  - 1.第一次getBean()的时候，触发依赖注入。
@@ -61,10 +72,15 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 ### spring bean生命周期：
   - 实例化bean对象，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口执行destroy方法，是否配置有销毁方法。
   
+### spring 初始化方法执行顺序
+  - @PostConStruct->initionBean（atfterProperties）->配置方法（@Bean或xml配置）
+
+### AbatractBeanDefinition中setInitMethodName这是初始化方法
 
 ### spring 解决循坏依赖问题：三层依赖
 - 其中第一层是singletonObjects，首先会去看singletonObjects是否已经创建了一个对象。如果没有，那么从第二层缓存earlySingletonObjects提前曝光对象的缓存中获取；如果没有，那么最后从第三层缓存singletonFactories单实例工厂缓存中获取。当获取成功后，会把第三层缓存singletonFactories的bean去掉，加入到第二层缓存中。
 
+### getBean是线程安全的（sync锁）
 
 ### Spring容器中的bean可以分为5个范围：
  - 1. singleton：默认，每个容器中只有一个bean的实例，单例的模式由BeanFactory自身来维护。
@@ -86,6 +102,8 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 
 ### SmartInitializingSingleton是所有单例的bean初始化完成之后执行的回调方法。
 
+### @Resource 通过CommonAnnotationBeanPostProcessor处理
+
 ### @Autowired注解原理：
  - 注解解析器：AutowiredAnnotationBeanPostProcessor
  - 1.Spring容器启动时，AutowiredAnnotationBeanPostProcessor被注册到容器；
@@ -93,10 +111,15 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
  - 3.创建bean时（实例化对象和初始化），会调用各种BeanPostProcessor对bean初始化，AutowiredAnnotationBeanPostProcessor负责将相关的依赖注入进来
  
 ### @Autowired注入对象顺序: 按类型找->通过限定符@Qualifier过滤->@Primary->@Priority->根据名称找（字段名称或者方法名称）
+
 ### @Resource注入对象顺序: 按名称（字段名称、方法名称、set属性名称）找->按类型找->通过限定符@Qualifier过滤
 
+### @Autowired通过AutowiredAnnotationBeanPostProcessor类的postProcessProperties方法处理注入
+
+### @value注入原理 通过AutowiredAnnotationBeanPostProcessor类的postProcessProperties方法调用DefaultListableBeanFactory类的resolveDependency方法注入
 
 ### 当@Bean方法在没有使用@Configuration注解的类中声明时称之为lite @Bean mode，不会被动态代理,否则称为full @Bean mode，会被动态代理
+
 
 ### 被CGLIB的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能被声明为private和final，不然在启动时Spring会直接报错。
 
@@ -111,6 +134,8 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 ### ImportBeanDefinitionRegistrar用法大体和BeanDefinitionRegistryPostProcessor相同，但是值得注意的是ImportBeanDefinitionRegistrar只能通过由其它类使用注解(@import)的方式来加载，通常是主启动类或者注解。
 
 ### 在@Configuration标注的Class上可以使用@Import引入其它的配置类，其实它还可以引入org.springframework.context.annotation.ImportSelector实现类。ImportSelector接口只定义了一个selectImports()，用于指定需要注册为bean的Class名称。当在@Configuration标注的Class上使用@Import引入了一个ImportSelector实现类后，会把实现类中返回的Class名称都定义为bean。
+
+### 通过serviceLoaderFactoryBean实例化bean，（spring兼容java spi方式）
 
 ### springmvc是不是线程安全的。
   - 对于使用过SpringMVC和Struts2的人来说，大家都知道SpringMVC是基于方法的拦截，而Struts2是基于类的拦截。struct2为每一个请求都实例化一个action所以不存在线程安全问题，springmvc默认单例请求使用一个Controller，假如这个Controller中定义了静态变量，就会被多个线程共享。所以springmvc的controller不要定义静态变量。如果要使用可以用ThreadLocal或者@Scope("prototype")开启不以单例的模式运行但是以这种方式运行就不是单例了会有额外的开销。
