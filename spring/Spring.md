@@ -1,7 +1,7 @@
 # Spring
 
-- @Configuration 会进行动态代理保证单例，不加会初始化多次，不会生成动态代理。
-- ConfigurationClassPostProcessor : 
+- @Configuration: 该注解会进行cglib动态代理保证单例，不加会初始化多次，不会生成动态代理。
+- ConfigurationClassPostProcessor :  负责处理@Configuration和@Component、@ComponentScan、@Import、@ImportResource、@Bean
 - ConfigurationClassEnhancer: cglib代理，基于类实现， （代理名称：xxBySpringCGLIB），BeanMethodInterceptor对目标对象拦截，保证对象不会重复创建
 - BeanFactoryPostProcessor：BeanFactory后置执行器，BeanFactoryPostProcessor接口是针对bean容器的，它的实现类可以在当前BeanFactory初始化（spring容器加载bean定义文件）后，bean实例化之前修改bean的定义属性，达到影响之后实例化bean的效果。
 - BeanPostProcess： AOP基于此实现，BeanPostProcessor能在spring容器实例化bean之后，在执行bean的初始化方法前后，添加一些自己的处理逻辑。
@@ -34,8 +34,7 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 
 
 ### 通过注解的方式创建bean的过程
-AnnotatedBeanDefinitionReader解析配置类，生成AnnotatedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器，
-ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器。
+初始化AnnotationConfigApplicationContext容器调用AnnotatedBeanDefinitionReader解析配置类，生成AnnotatedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器，ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinition，通过BeanDefinitionRegistry注册到IOC容器。
 
 ### 通过注解的方式启动获取Bean获取过程(@autowired通过类型，@resource通过名称,@aualifier通过名称)
 根据传入的类型获取bean的所有名称，过滤候选bean名称，如果bean名称只有一个，那么直接调用AbstractBeanFactory里的doGetBean进行实例化并返回，如果bean名称有多个，则选出主要候选名称或者最高优先级的名称来帮助实例化。如果没有选出可用的名称，则抛出bean定义冲突异常。
@@ -43,7 +42,7 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 ### IOC容器初始化过程：
  - 初始化包括Beandefinition的Resource定位、载入、注册三个基本的过程。
   - BeanFactroy采用的是延迟加载形式来注入Bean的，即只有在使用到某个Bean时(调用getBean())，才对该Bean进行加载实例化。这样，我们就不能发现一些存在的Spring的配置问题。如果Bean的某一个属性没有注入，BeanFacotry加载后，直至第一次使用调用getBean方法才会抛出异常。
-  - ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。 ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
+  - ApplicationContext，它是在容器启动时，一次性创建了所有的Bean。这样，在容器启动时，我们就可以发现Spring中存在的配置错误，这样有利于检查所依赖属性是否注入。ApplicationContext启动后预载入所有的单实例Bean，通过预载入单实例bean ,确保当你需要的时候，你就不用等待，因为它们已经创建好了。
 
 ### IOC实现方式
   - 依赖查找
@@ -131,7 +130,7 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 
 ### BeanDefinitionRegistryPostProcessor是BeanFactoryPostProcessor的子类，在父类的基础上，增加了新的方法，允许我们获取到BeanDefinitionRegistry，从而编码动态修改BeanDefinition。例如往BeanDefinition中添加一个新的BeanDefinition。
 
-### ImportBeanDefinitionRegistrar用法大体和BeanDefinitionRegistryPostProcessor相同，但是值得注意的是ImportBeanDefinitionRegistrar只能通过由其它类使用注解(@import)的方式来加载，通常是主启动类或者注解。
+### ImportBeanDefinitionRegistrar用法大体和BeanDefinitionRegistryPostProcessor相同，但是值得注意的是ImportBeanDefinitionRegistrar只能通过由其它类使用注解(@Import)的方式来加载，通常是主启动类或者注解。
 
 ### 在@Configuration标注的Class上可以使用@Import引入其它的配置类，其实它还可以引入org.springframework.context.annotation.ImportSelector实现类。ImportSelector接口只定义了一个selectImports()，用于指定需要注册为bean的Class名称。当在@Configuration标注的Class上使用@Import引入了一个ImportSelector实现类后，会把实现类中返回的Class名称都定义为bean。
 
@@ -156,16 +155,16 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 
 
 ### 什么是springboot自动装配？
-    spring程序在main方法中添加了@springbootapplication和@enableAutoConfiguration会自动读取每一个starter包下的spring.factories中的配置文件。
+    spring程序在main方法中添加了@springbootapplication和@enableAutoConfiguration会自动读取每一个starter包下的spring.factories中的配置文件。
 
 ### 如何将springboot打成war包运行
-  - 启动类继承SpringBootServletInitializer类重写configure方法。
+  - 启动类继承SpringBootServletInitializer类重写configure方法。
   - 修改pom文件配置war格式。
 
-### SpringBootApplication包含@SpringBootConfiguration、@EnableAutoConfiguration、@ComponentScann
+### SpringBootApplication包含@SpringBootConfiguration、@EnableAutoConfiguration、@ComponentScann
 
 
-### AbstractBeanFactoryAwareAdvisingPostProcessor 方法级验证，注解验证基于此实现
+### AbstractBeanFactoryAwareAdvisingPostProcessor方法级验证，注解验证基于此实现
 
 ### spring父子容器
   - 通常我们使用springmvc的时候，采用3层结构，controller层，service层，dao层；父容器中会包含dao层和service层，而子容器中包含的只有controller层；这2个容器组成了父子容器的关系，controller层通常会注入service层的bean。采用父子容器可以避免有些人在service层去注入controller层的bean，导致整个依赖层次是比较混乱的。父容器和子容器的需求也是不一样的，比如父容器中需要有事务的支持，会注入一些支持事务的扩展组件，而子容器中controller完全用不到这些，对这些并不关心，子容器中需要注入一下springmvc相关的bean，而这些bean父容器中同样是不会用到的，也是不关心一些东西，将这些相互不关心的东西隔开，可以有效的避免一些不必要的错误，而父子容器加载的速度也会快一些。
@@ -173,8 +172,8 @@ ClassPathBeanDefinitionScanner扫描bean路径，生成ScannedGenericBeanDefinit
 
 ### @Component和@Bean的区别是什么？
 - 作用对象不同: @Component 注解作用于类，而@Bean注解作用于方法。
-- @Component通常是通过类路径扫描来自动侦测以及自动装配到Spring容器中（我们可以使用 @ComponentScan 注解定义要扫描的路径从中找出标识了需要装配的类自动装配到 Spring 的 bean 容器中）。@Bean 注解通常是我们在标有该注解的方法中定义产生这个 bean,@Bean告诉了Spring这是某个类的示例，当我需要用它的时候还给我。
-- @Bean 注解比 Component 注解的自定义性更强，而且很多地方我们只能通过 @Bean 注解来注册bean。比如当我们引用第三方库中的类需要装配到 Spring容器时，则只能通过 @Bean来实现。
+- @Component通常是通过类路径扫描来自动侦测以及自动装配到Spring容器中（我们可以使用 @ComponentScan 注解定义要扫描的路径从中找出标识了需要装配的类自动装配到Spring的beanbe容器中）。@Bean 注解通常是我们在标有该注解的方法中定义产生这个 bean,@Bean告诉了Spring这是某个类的示例，当我需要用它的时候还给我。
+- @Bean 注解比 Component 注解的自定义性更强，而且很多地方我们只能通过@Bean注解来注册bean。比如当我们引用第三方库中的类需要装配到 Spring容器时，则只能通过@Bean来实现。
   
 ### @Transactional失效的几种情况
 1. 一个有@Transactional的方法被没有@Transactional方法调用时，会导致Transactional作用失效。也是最容易出现的情况。
