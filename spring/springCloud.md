@@ -1,5 +1,6 @@
-# springCloud:
- - bootstrap.yml（bootstrap.properties）与application.yml（application.properties）执行顺序
+# springCloud
+
+### bootstrap.yml（bootstrap.properties）与application.yml（application.properties）执行顺序
  - bootstrap.yml（bootstrap.properties）用来程序引导时执行，应用于更加早期配置信息读取，如可以使用来配置application.yml中使用到参数等
  - application.yml（application.properties) 应用程序特有配置信息，可以用来配置后续各个模块中需使用的公共参数等。
  - bootstrap.yml 先于 application.yml 加载
@@ -208,7 +209,7 @@
 
   #### Zuul1.0基于Servlet2.5阻塞I/O实现，不支持长连接。
   #### Zuul2.0较Zuul1.0有较大提升，不开源。
-  #### GateWay基于Servelt3、WebFlux、netty异步非阻塞I/O，支持长连接,（netty运行时）不能在servlet容器中使用，或war包运行。
+  #### GateWay基于Servelt3、WebFlux、netty异步非阻塞I/O，支持长连接。
 
   ### zuul路由配置：
      ```txt
