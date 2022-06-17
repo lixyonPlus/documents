@@ -175,6 +175,14 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 - @Component通常是通过类路径扫描来自动侦测以及自动装配到Spring容器中（我们可以使用 @ComponentScan 注解定义要扫描的路径从中找出标识了需要装配的类自动装配到Spring的beanbe容器中）。@Bean 注解通常是我们在标有该注解的方法中定义产生这个 bean,@Bean告诉了Spring这是某个类的示例，当我需要用它的时候还给我。
 - @Bean 注解比 Component 注解的自定义性更强，而且很多地方我们只能通过@Bean注解来注册bean。比如当我们引用第三方库中的类需要装配到 Spring容器时，则只能通过@Bean来实现。
   
+
+### @RefreshScope原理
+- @RefreshScope等于@Scope("refresh")
+- contextRefresher.refresh();执行更新
+- 推送事件消息,监听该事件处理业务
+
+
+
 ### @Transactional失效的几种情况
 1. 一个有@Transactional的方法被没有@Transactional方法调用时，会导致Transactional作用失效。也是最容易出现的情况。
 2. 对非public方法进行事务注解
