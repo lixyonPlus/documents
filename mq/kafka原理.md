@@ -1,142 +1,52 @@
-# Kafka
-
-## kafka命令
-
-##### kafka-topic.sh
-
-```shell
-./kafka-topic.sh --zookeeper localhost:2181 --create --replication-factor 1 --partitions 1 --topic test
-### 如果topic不存在时新建topic
-./kafka-topic.sh --zookeeper localhost:2181 --create --if-not-exists --replication-factor 1 --partitions 1 --topic test
-### 新增topic分区数量
-./kafka-topic.sh --zookeeper localhost:2181 --alter --partitions 1 --topic test
-### 删除topic分区数量
-./kafka-topic.sh --zookeeper localhost:2181 --delete --topic test
-### 查看所有topic
-./kafka-topic.sh --zookeeper localhost:2181 --list
-### 查看topic
-./kafka-topic.sh --zookeeper localhost:2181 --describe --if-exists --topic test
-### 查询包含不同步副本的分区
-./kafka-topic.sh --zookeeper localhost:2181 --describe --under-replicated-partitions
-### 查询没有leader副本的分区
-./kafka-topic.sh --zookeeper localhost:2181 --describe --unavailable-partitions
-```
-
-##### Kafka-consumer-group.sh
-
-```shell
-### 查询所有消费者组
-./kafka-consumer-group.sh --zookeeper localhost:2181 --list
-### 查询消费组信息
-./kafka-consumer-group.sh --zookeeper localhost:2181 --describe --group group.test
-### 删除消费者组
-./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --delete --group group.test
-### 把消费者组offset调整到分区当前最新offset
-./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group group.demo --reset-offsets --all-topics --to-latest --execute
-### 把消费者组offset调整到分区当前最小offset
-./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group group.demo --reset-offsets --all-topics --to-earliest --execute
-### 把消费者组offset调整到分区指定的offset（不能小于当前最小offset或大于当前最大offset）
-./kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group group.demo --reset-offsets --all-topics --to-offset 191 --execute
-```
-
-##### kafka-configs.sh
-
-```shell
-### 修改topic默认配置，消息保留时间为1小时
-./kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics --entity-name first --add-config retention.ms=3600000
-### 查询被覆盖的配置
-./kafka-configs.sh --bootstrap-server localhost:9092 --describe --entity-type topics --entity-name first
-### 移除被覆盖的配置
-./kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics --entity-name first --delete-config retention.ms
-```
-
-##### Kafka-preferred-replica-election.sh
-
-```shell
-### 启动首选副本选举
-./kafka-preferred-replica-election.sh --bootstrap-server localhost:9092 
-```
-
-##### kafka-replica-verification.sh
-
-```shell
-### 副本验证
-./kafka-replica-verification.sh --broker-list localhost:9092 --topic-white-list 'first'
-```
+### 概念
+- Broker （节点）：Kafka服务节点，简单来说一个 Broker 就是一台Kafka服务器，一个物理节点。
+- Topic （主题）：在Kafka中消息以主题为单位进行归类，每个主题都有一个 Topic Name ，生产者根据Topic Name将消息发送到特定的Topic，消费者则同样根据Topic Name从对应的Topic进行消费。
+- Partition （分区）：Topic （主题）是消息归类的一个单位，但每一个主题还能再细分为一个或多个 Partition （分区），一个分区只能属于一个主题。主题和分区都是逻辑上的概念，举个例子，消息1和消息2都发送到主题1，它们可能进入同一个分区也可能进入不同的分区（所以同一个主题下的不同分区包含的消息是不同的），之后便会发送到分区对应的Broker节点上。
+- Offset （偏移量）：分区可以看作是一个只进不出的队列（Kafka只保证一个分区内的消息是有序的），消息会往这个队列的尾部追加，每个消息进入分区后都会有一个偏移量，标识该消息在该分区中的位置，消费者要消费该消息就是通过偏移量来识别。
 
 
+### kafka分区多副本冗余机制
+- 副本是以 Topic 中每个 Partition的数据为单位，每个Partition的数据会同步到其他物理节点上，形成多个副本。
+每个 Partition 的副本都包括一个 Leader 副本和多个 Follower副本，Leader由所有的副本共同选举得出，其他副本则都为Follower副本。在生产者写或者消费者读的时候，都只会与Leader打交道，在写入数据后Follower就会来拉取数据进行数据同步。当某个 Broker 挂掉了，甭担心，这个 Broker 上的 Partition 在其他 Broker 节点上还有副本。你说如果挂掉的是 Leader 怎么办？那就在 Follower中在选举出一个 Leader 即可，生产者和消费者又可以和新的 Leader 愉快地玩耍了，这就是高可用。
+![](https://mmbiz.qpic.cn/mmbiz_png/JdLkEI9sZfcHSNliaR9fn3bbAwg31zdQJiaiaQTFAasYW2YGGrdTyxVSySMB8oWdIEADfpzsjCp2ATb8vaag881vQ/640?wx_fmt=png&wxfrom=5&wx_lazy=1&wx_co=1)
 
-##### 往topic发送消息
 
-```shell
-./kafka-console-producer.sh --broker-list localhost:9092 --topic test1
-./kafka-console-producer.sh --bootstrap-server localhost:9092 --topic test1
-```
+### 多少个副本才算够用？
+- 副本肯定越多越能保证Kafka的高可用，但越多的副本意味着网络、磁盘资源的消耗更多，性能会有所下降，通常来说副本数为3即可保证高可用，极端情况下将 replication-factor 参数调大即可。
 
-##### 消费topic消息
+### Follower和Lead之间没有完全同步怎么办？
+- Follower和Leader之间并不是完全同步，但也不是完全异步，而是采用一种 ISR机制（ In-Sync Replica）。每个Leader会动态维护一个ISR列表，该列表里存储的是和Leader基本同步的Follower。如果有Follower由于网络、GC等原因而没有向Leader发起拉取数据请求，此时Follower相对于Leader是不同步的，则会被踢出ISR列表。所以说，ISR列表中的Follower都是跟得上Leader的副本。
 
-```shell
-### 从头开始消费
-./kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test --from-beginning
-### 实时消费
-./kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test1
-```
+### 一个节点宕机后Leader的选举规则是什么？
+- Kafka的Leader选举思路很简单，基于ISR列表，当宕机后会从所有副本中顺序查找，如果查找到的副本在ISR列表中，则当选为Leader。另外还要保证前任Leader已经是退位状态了，否则会出现脑裂情况（有两个Leader）。怎么保证？Kafka通过设置了一个controller来保证只有一个Leader。
 
-##### Kafka-verifiable-producer.sh
 
-```shell
+### __consumer_offset
+- __consumer_offset 是一个Kafka自动创建的 Topic，用来存储消费者消费的 offset （偏移量）信息，默认 Partition数为50。而就是这个Topic，它的默认副本数为1。如果所有的 Partition 都存在于同一台机器上，那就是很明显的单点故障了！当将存储 __consumer_offset 的Partition的Broker给Kill后，会发现所有的消费者都停止消费了。这个问题怎么解决？
+ - 第一点 ，需要将 __consumer_offset 删除，注意这个Topic时Kafka内置的Topic，无法用命令删除，我是通过将 logs 删了来实现删除。
+ - 第二点 ，需要通过设置 offsets.topic.replication.factor 为3来将 __consumer_offset 的副本数改为3。通过将 __consumer_offset 也做副本冗余后来解决某个节点宕机后消费者的消费问题。
 
-### 生产测试数据发送到指定topic,并将数据已json格式打印到控制台
 
-### --max-messages: 最大消息数量，默认-1，一直生产消息
-### --throughput: 设置吞吐量，默认-1
-### --acks: 指定分区中必须有多少个副本收到这条消息，才算消息发送成功，默认-1
-### --message-create-time: 设置消息创建的时间，时间戳
-### --value-prefix: 设置消息前缀
-### --repeating-keys: key从0开始，每次递增1，直到指定的值，然后再从0开始
-./kafka-verifiable-producer.sh --bootstrap-server localhost:9092 --topic first --message-create-time 1527351382000 --value-prefix 1 --repeating-keys 10 --max-message 20
-
-```
-
-##### kafka-verifiable-consumer.sh
-
-```shell
-### 消费指定topic消息
-### --topic: 要消费的topic
-### --group-id: 消费组id
-### --max-messages: 最大消费消息数量，默认-1，一直消费
-### --session-timeout: 消费者会话超时时间，默认30000ms，服务端如果在该时间内没有接收到消费者的心跳，就会将该消费者从消费组中删除
-### --enable-autocommit: 自动提交，默认false
-### --reset-policy: 设置消费偏移量，earliest从头开始消费，latest从最近的开始消费，none抛出异常，默认earliest
-### --assignment-strategy: 消费者的分区配置策略, 默认 RangeAssignor
-./kafka-verifiable-consumer.sh --broker-list localhost:9092 --topic first --group-id group.demo --max-messages 2 --enable-autocommit --reset-policy earliest
-```
-
-##### kafka-log-dirs.sh
-
-```shell
-### 查看指定broker上日志目录使用情况
-./kafka-log-dirs.sh --bootstrap-sever localhost:9092 --describe --topic-list test,first
-```
-
+---
 
 ### 分区
   
-### kafka生产者发送消息分区策略
+### kafka生产者发送消息到broker分区策略
 - 使用默认分区，如果message存在的key的话，则取key的hash值（使用的是murmur2这种高效率低碰撞的Hash算法），然后与partition总数取模，得到目标partition编号，这样可以保证同一key的message进入同一partition。
 - 使用默认分区，如果message没有key，则通过StickyPartitionCache.partition() 方法计算目标partition。 
  - StickyPartitionCache主要实现的是”黏性选择”，就是尽可能的先往一个partition发送message，让发往这个partition的缓冲区快速填满，这样的话，就可以降低message的发送延迟。我们不用担心出现partition数据量不均衡的情况，因为只要业务运行时间足够长，message还是会均匀的发送到每个 partition上的。 StickyPartitionCache会先从indexCache字段中获取黏住的partition，如果没有，则调用nextPartition() 方法向indexCache中写入一个(会先获取目标topic中可用的partition，并从中随机选择一个写入indexCache)
 - 可以实现Partitioner接口，自定义分区策略。
 
 
-##### 消费者分配分区过程
+##### kafka给消费者分配分区过程
 `当消费者要加入群组时，会向群组协调器发送一个joinGroup请求，第一个加入群组的消费者为群主，群主从协调器那里获得群组的成员列表（列表包含最近发送过心跳的消费者，它们被认为是活跃的），并负责给每一个消费者分配分区。他使用了一个实现了PartitionAssignor接口的类来决定分区应该分配给哪些消费者。kafka内置了两种分配策略，分配完毕之后，群主把分配情况列表发送给群主协调器，协调器再把这些信息发送给所有消费者。每个消费者只能看到自己的分配信息，只有群主知道所有消费者的分配信息，这个过程会在每次rebalance时重复发生。`
+
 
 ##### Kafka消费者分区分配策略
 - Range(默认): 该策略会把主题的若干个连续的分区分配给消费者。假设消费者C1和消费者C2同时订阅了主题T1和主题T2，井且每个主题有3个分区。那么消费者C1有可能分配到两个主题的分区0和分区1，而消费者C2分配到这两个主题的分区2。因为每个主题拥有奇数个分区，而分配是在主题内独立完成的，第一个消费者最后分配到比第二个消费者更多的分区。只要使用了Range策略，而且分区数量无怯被消费者数量整除，就会出现这种情况。默认使用的是org.apache.kafka.clients.consumer.RangeAssignor
 - RoundRobin: 该策略把主题的所有分区逐个分配给消费者。如果使用RoundRobin策略来给消费者C1和消费者C2分配分区，那么消费者C1将分到主题T1的分区0和分区2以及主题T2的分区1，消费者C2将分配到主题T1的分区1以及主题T2的分区0和分区2。一般来说，如果所有消费者都订阅相同的主题(这种情况很常见), RoundRobin策略会给所有消费者分配相同数量的分区(或最多就差一个分区)。
 
-#### zookeeper
+#### kafka使用zookeeper实现一致性选举
 
 Kafka使用Zookeeper的临时节点来选举控制器，并在节点加入集群或退出集群时通知控制器。控制器负责在节点加入或离开集群时进行分区首领选举。控制器使用epoch来避免“脑裂” 。“脑裂”是指两个节点同时认为自己是当前的控制器。
 
