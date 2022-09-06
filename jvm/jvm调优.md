@@ -124,15 +124,15 @@ the space 69632K,   4% used [0x227d0000, 0x22aeb958, 0x22aeba00, 0x26bd0000)
     -Xloggc:/opt/logs/xx-gc-%t.log -XX:+UseGCLogFileRotation -XX:NumberOfGcLogFiles=5 -XX:GCLogFileSize=20M -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCCause
 
 ### 调优步骤
-    top查看程序占用的资源： top -Hp pid
-    jps查看java进程
-    jstack pid 查看堆栈，重点关注：WAITING BLOCKED 
+    查询资源占用最高的进程(得到进程id): top 
+    查看占用资源最多的线程： top -Hp pid(进程id)
+    jstack pid(进程id) 查看堆栈，重点关注：WAITING BLOCKED 
     假如有一个进程有100个线程，很多线程都在waiting on<xxx>,一定要找到哪个线程持有这个锁，根据jstack dump的信息，找<xxx>，看哪个线程持有这把锁的RUNNABLE。<xxx>表示线程名称，这也是阿里规范线程/池需要指定名称。
     jinfo 查看程序运行jvm参数
-    jmap -histo pid | head -20 查询内存中前20行信息 【卡顿】
+    jmap -histo pid | head -20 查询内存中前20行信息 【卡顿】
     jmap -dump:format=b,file=文件名 [pid] 导出JVM内存信息 【卡顿】
     在JVM的配置参数中可以添加 -XX:+HeapDumpOnOutOfMemoryError 参数，当应用抛出 OutOfMemoryError 时自动生成dump文件；
- 
+    
 
 
  #### arthas（阿尔萨斯）线上调优

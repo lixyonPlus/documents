@@ -1,7 +1,7 @@
 ## JAVA内存区域
 ![](https://cdn.jsdelivr.net/gh/javaguide-tech/image-host-github-stars-01@main/TeachYourselfCS/2019-3Java%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA%E5%9F%9FJDK1.8.png)
 
-### 线程私有： 程序计数器、本地方法栈、虚拟机栈（栈帧：局步变量表（基本数据类型、对象引用、returnAddress类型）、操作数栈、动态链接、方法出口）
+### 线程私有： 程序计数器、本地方法栈、虚拟机栈（栈帧：局步变量表{基本数据类型、对象引用、returnAddress类型}、操作数栈、动态链接、方法出口）
 
 ### 线程共享： 堆（新生代（eden，fromSurvivor，toSurvivor）、老年代）、 metaspace（运行时常量池（符号引用（类完全限定名、字段名称描述符、方法名称描述符）、字面量：字符串、final常量、基本数据类型、其他））、直接内存（堆外内存）
 

@@ -26,3 +26,22 @@
 - 嵌套结果:【association::javaType】
 - 多表查询调用方法 getPropertyMappingValue::getNestedQueryMappingValue()
 - 二级缓存用联合查询时会出现 1.脏数据，2.全部失效
+
+### mybatis初始化流程
+![](https://juejin.cn/post/6875486003025428494)
+- 加载mybatis配置文件
+- 创建SqlSessionFactory并解析mybatis配置文件
+- 从SqlSessionFactory拿到SqlSession
+  
+  ### mybatis一级缓存和二级缓存
+  ![](https://www.bemhome.com/zb_users/upload/2020/10/202010021601602226459110.jpg)
+  - mybatis一级缓存是默认开启的，二级缓存是默认关闭的
+  - 一级缓存作用于session级别，select查询操作会产生一级缓存
+  - 以下操作会清除缓存: sqlSession.close();sqlSession.commit();sqlSession.rollback();sqlSession.clearCache();insert、update、delete之后会清空一级缓存，而且即使查询的先查询的表和后更新的表不是一个表也会清空缓存，清空所有session一级缓存
+  - 二级缓存产生的条件:
+    - 二级缓存开启
+    - select查询操作
+    - sqlSession执行了close、commit操作
+![](https://www.bemhome.com/zb_users/upload/2020/10/202010021601602226651027.jpg)
+![](https://www.bemhome.com/zb_users/upload/2020/10/202010021601602226598409.jpg)
+![](https://www.bemhome.com/zb_users/upload/2020/10/202010021601602226822676.jpg)
