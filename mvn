@@ -1,0 +1,12 @@
+### mvn命令上传jar包到私有仓库
+```
+mvn -s /Users/lxy/work/apache-maven-3.5.2/conf/settings-work.xml deploy:deploy-file \
+-DgroupId=com.sankuai.inf.leaf \
+-DartifactId=leaf-core \
+-Dversion=1.0.1 \
+-Dpackaging=jar \
+-Dfile=/Users/lxy/Desktop/hc/leaf-core-1.0.1.jar \
+-DpomFile=/Users/lxy/Desktop/hc/leaf-core-1.0.1.pom \
+-Durl=http://nexus.finmax.com:8081/repository/maven-releases/ \
+-DrepositoryId=nexus
+```
