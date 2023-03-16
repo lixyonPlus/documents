@@ -73,6 +73,9 @@
       }
     ```
 
+#### org.springframework.cloud.context.named.NamedContextFactory ribbon自己维护的spring容器
+
+
 # Hystrix：
 - 初始化顺序： @EnableCiruitBreaker -> EnableCircuitBreakerImportSelector -> HystrixCircuitBreakerConfiguration
  ### HystrixCircuitBreakerConfiguration

@@ -35,3 +35,60 @@ helm install apisix apisix/apisix \
 helm install apisix-dashboard apisix/apisix-dashboard --create-namespace --namespace apisix
 5. 查看资源是否正常运行
 kubectl get service --namespace apisix
+
+
+# apisix-dashboard配合k8s服务发现使用
+- https://apisix.apache.org/zh/docs/apisix/discovery/kubernetes/
+1. 创建sa,apisix默认使用的是default，需要修改apisix的yaml配置
+```yaml
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+ name: apisix
+ namespace: apisix
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+ name: apisix
+rules:
+- apiGroups: [ "" ]
+  resources: [ endpoints ]
+  verbs: [ get,list,watch ]
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+ name: apisix
+roleRef:
+ apiGroup: rbac.authorization.k8s.io
+ kind: ClusterRole
+ name: apisix
+subjects:
+ - kind: ServiceAccount
+   name: apisix
+   namespace: apisix
+```
+2. 服务配置如下
+```json
+{
+  "timeout": {
+    "connect": 6,
+    "send": 6,
+    "read": 6
+  },
+  "type": "roundrobin",
+  "scheme": "http",
+  "discovery_type": "kubernetes",
+  "pass_host": "pass",
+  "name": "log-record-service",
+  "service_name": "hc-public/log-record-service:8080",
+  "keepalive_pool": {
+    "idle_timeout": 60,
+    "requests": 1000,
+    "size": 320
+  }
+}
+```
