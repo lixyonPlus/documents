@@ -47,19 +47,19 @@ local schema = {
             minItems = 1
         },
     },
-    oneOf = {
+    anyOf = {
         {required = {"whitelist"}},
         {required = {"blacklist"}},
     },
 }
 
 
-local plugin_name = "ip-restriction"
+local plugin_name = "hc-restriction"
 
 
 local _M = {
     version = 0.1,
-    priority = 3000,
+    priority = 1000,
     name = plugin_name,
     schema = schema,
 }
@@ -93,10 +93,15 @@ function _M.check_schema(conf)
 end
 
 
-function _M.restrict(conf, ctx)
+function _M.rewrite(conf, ctx)
     local block = false
+    core.log.error("start:")
     local remote_addr = core.request.header(ctx, conf.ip_header)
---  local remote_addr = ctx.var.remote_addr
+    core.log.error("header: ",remote_addr)
+    if remote_addr == nil then
+        remote_addr = ctx.var.remote_addr
+    end
+    core.log.error("remote_addr: ",remote_addr)
 
     if conf.blacklist then
         local matcher = lrucache(conf.blacklist, nil,
