@@ -22,47 +22,44 @@ local lrucache  = core.lrucache.new({
 
 
 local schema = {
-    type = "array",
-    minItems = 1,
-    items = {
-        type = "object",
-        properties = {
-            type = {
-                type = "string",
-                default = "header",
-                enum = {"header", "body"},
-                description = "name localtion",
-            },
-            key = {
-                type = "string",
-                minLength = 1,
-                maxLength = 1024,
-                description = "key name",
-            },
-            value = {
-                type = "string",
-                minLength = 1,
-                maxLength = 1024,
-                description = "key name equals value",
-            },
-            url = {
-                type = "string",
-                description = "forward url",
-            },
+    type = "object",
+    properties = {
+        message = {
+            type = "string",
+            minLength = 1,
+            maxLength = 1024,
+            default = "Your IP address is not allowed"
+        },
+        ip_header = {
+            type = "string",
+            minLength = 1,
+            maxLength = 1024,
+            default = "remote_addr"
+        },
+        whitelist = {
+            type = "array",
+            items = {anyOf = core.schema.ip_def},
+            minItems = 1
+        },
+        blacklist = {
+            type = "array",
+            items = {anyOf = core.schema.ip_def},
+            minItems = 1
         },
     },
     anyOf = {
-        {required = {"type","key","value","url"}},
+        {required = {"whitelist"}},
+        {required = {"blacklist"}},
     },
 }
 
 
-local plugin_name = "ip-redirect"
+local plugin_name = "hc-restriction"
 
 
 local _M = {
     version = 0.1,
-    priority = 3000,
+    priority = 1000,
     name = plugin_name,
     schema = schema,
 }
@@ -75,23 +72,36 @@ function _M.check_schema(conf)
         return false, err
     end
 
+    -- we still need this as it is too complex to filter out all invalid IPv6 via regex
+    if conf.whitelist then
+        for _, cidr in ipairs(conf.whitelist) do
+            if not core.ip.validate_cidr_or_ip(cidr) then
+                return false, "invalid ip address: " .. cidr
+            end
+        end
+    end
+
+    if conf.blacklist then
+        for _, cidr in ipairs(conf.blacklist) do
+            if not core.ip.validate_cidr_or_ip(cidr) then
+                return false, "invalid ip address: " .. cidr
+            end
+        end
+    end
+
     return true
 end
 
 
-function _M.restrict(conf, ctx)
-    local value
-    if conf.type == "header" then
-        value = core.request.header(ctx, conf.key)
-    else
-        local body, err = core.request.get_body()
-        if not body then
-            if err then
-                core.log.error("failed to get body: ", err)
-            end
-            req_body, err = core.json.decode(body)
-        end
+function _M.rewrite(conf, ctx)
+    local block = false
+    core.log.error("start:")
+    local remote_addr = core.request.header(ctx, conf.ip_header)
+    core.log.error("header: ",remote_addr)
+    if remote_addr == nil then
+        remote_addr = ctx.var.remote_addr
     end
+    core.log.error("remote_addr: ",remote_addr)
 
     if conf.blacklist then
         local matcher = lrucache(conf.blacklist, nil,
