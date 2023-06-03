@@ -1,68 +1,56 @@
---
--- Licensed to the Apache Software Foundation (ASF) under one or more
--- contributor license agreements.  See the NOTICE file distributed with
--- this work for additional information regarding copyright ownership.
--- The ASF licenses this file to You under the Apache License, Version 2.0
--- (the "License"); you may not use this file except in compliance with
--- the License.  You may obtain a copy of the License at
---
---     http://www.apache.org/licenses/LICENSE-2.0
---
--- Unless required by applicable law or agreed to in writing, software
--- distributed under the License is distributed on an "AS IS" BASIS,
--- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
--- See the License for the specific language governing permissions and
--- limitations under the License.
---
-local ipairs    = ipairs
-local core      = require("apisix.core")
-local lrucache  = core.lrucache.new({
-    ttl = 300, count = 512
-})
-
+local ngx_re = require("ngx.re")
+local core = require("apisix.core")
+local http = require "resty.http"
+local tostring = tostring
 
 local schema = {
-    type = "array",
-    minItems = 1,
-    items = {
-        type = "object",
-        properties = {
-            type = {
-                type = "string",
-                default = "header",
-                enum = {"header", "body"},
-                description = "name localtion",
-            },
-            key = {
-                type = "string",
-                minLength = 1,
-                maxLength = 1024,
-                description = "key name",
-            },
-            value = {
-                type = "string",
-                minLength = 1,
-                maxLength = 1024,
-                description = "key name equals value",
-            },
-            url = {
-                type = "string",
-                description = "forward url",
+    type = "object",
+    properties = {
+      list = {
+       type = "array",
+        minItems = 1,
+        items = {
+            type = "object",
+            properties = {
+                type = {
+                    type = "string",
+                    default = "header",
+                    enum = {"header", "body"},
+                    description = "name localtion",
+                },
+                keyword = {
+                    type = "string",
+                    minLength = 1,
+                    maxLength = 1024,
+                    description = "keyword name",
+                },
+                content = {
+                    type = "string",
+                    default = "",
+                    minLength = 1,
+                    maxLength = 1024,
+                    description = "keyword content",
+                },
+                url = {
+                    type = "string",
+                    description = "forward url",
+                },
             },
         },
-    },
-    anyOf = {
-        {required = {"type","key","value","url"}},
-    },
+        anyOf = {
+            {required = {"type","keyword","url"}},
+        },
+      }
+    }
 }
 
 
-local plugin_name = "ip-redirect"
+local plugin_name = "hc-redirect"
 
 
 local _M = {
     version = 0.1,
-    priority = 3000,
+    priority = 100,
     name = plugin_name,
     schema = schema,
 }
@@ -70,48 +58,60 @@ local _M = {
 
 function _M.check_schema(conf)
     local ok, err = core.schema.check(schema, conf)
-
     if not ok then
         return false, err
     end
-
     return true
 end
 
 
-function _M.restrict(conf, ctx)
-    local value
-    if conf.type == "header" then
-        value = core.request.header(ctx, conf.key)
-    else
-        local body, err = core.request.get_body()
-        if not body then
-            if err then
-                core.log.error("failed to get body: ", err)
+function _M.rewrite(conf, ctx)
+    core.log.error("hc-redircet...")
+    local req_headers = core.request.headers(ctx)
+    local req_body = core.request.get_body()
+
+    -- core.log.error("req1: ",core.json.delay_encode(core.request.get_body()))
+    -- core.log.error("req2: ",core.json.delay_encode(core.request.headers(ctx)))
+
+    for k, c in pairs(conf.list) do
+        local content
+        if c.type == "header" then
+            content = req_headers[c.keyword]
+        elseif c.type == "body" then
+            if req_headers["content-type"] == "application/json" then
+                local keywords = ngx_re.split(c.keyword, "\\.")
+                local json_body = core.json.delay_encode(req_body)
+                local data, err = core.json.decode(req_body)
+                if keywords == nil then
+                   content = data[c.keyword]
+                else
+                    for i, kw in ipairs(keywords) do
+                        data = data[kw]
+                        if type(data) ~= 'table' then
+                            break
+                        end
+                    end
+                    content = data
+                end 
             end
-            req_body, err = core.json.decode(body)
+        end
+        if c.content == content then
+            local httpc = http.new()
+            local res, err = httpc:request_uri(c.url, {
+                method = ngx.var.request_method,
+                -- path = ngx.var.request_uri,
+                headers = core.request.headers(ctx),
+                body = core.request.get_body()
+            })
+            if not res then
+                core.log.error("failed to request: ", err)
+                return 500, "internal error"
+            end
+            return res.status, res.body
         end
     end
-
-    if conf.blacklist then
-        local matcher = lrucache(conf.blacklist, nil,
-                                 core.ip.create_ip_matcher, conf.blacklist)
-        if matcher then
-            block = matcher:match(remote_addr)
-        end
-    end
-
-    if conf.whitelist then
-        local matcher = lrucache(conf.whitelist, nil,
-                                 core.ip.create_ip_matcher, conf.whitelist)
-        if matcher then
-            block = not matcher:match(remote_addr)
-        end
-    end
-
-    if block then
-        return 403, { message = conf.message }
-    end
+    core.log.error("not found...")
+    return 404
 end
 
 
