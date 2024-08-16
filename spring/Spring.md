@@ -134,6 +134,9 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 
 ### 在@Configuration标注的Class上可以使用@Import引入其它的配置类，其实它还可以引入org.springframework.context.annotation.ImportSelector实现类。ImportSelector接口只定义了一个selectImports()，用于指定需要注册为bean的Class名称。当在@Configuration标注的Class上使用@Import引入了一个ImportSelector实现类后，会把实现类中返回的Class名称都定义为bean。
 
+
+### AbstractAnnotationBeanPostProcessor自定义注解处理器
+
 ### 通过serviceLoaderFactoryBean实例化bean，（spring兼容java spi方式）
 
 ### springmvc是不是线程安全的。
