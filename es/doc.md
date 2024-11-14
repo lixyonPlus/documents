@@ -1,5 +1,3 @@
-# 
-
 ### 处理集群中状态异常的情况
 - red表示不是所有的主分片都可用，通常时由于某个索引的住分片为分片unassigned，只要找出这个索引的分片，手工分配即可
   _cluster/health?level=indices 查看所有索引信息，删除状态异常的索引
@@ -58,12 +56,8 @@ POST /_aliases
 ```
 
 ### Ingest Node
-- Elasticsearch 5.0 后，引入的一种新的节点类型。默认配置下，每个节点都是 Ingest Node
-    具有预处理数据的能力，可拦截 Index 或者 Bulck API 的请求
-    对数据进行转换，并重新返回给 Index 和 Bluck API
-- 无需 Logstash ，就可以进行数据的预处理，例如
-    为某个字段设置默认值；重命名某个字段的字段名；对字段值进行 Split 操作
-    支持设置 Painless 脚本，对数据进行更加复杂的加工
+- Elasticsearch 5.0 后，引入的一种新的节点类型。默认配置下，每个节点都是 Ingest Node具有预处理数据的能力，可拦截 Index 或者 Bluck API 的请求对数据进行转换，并重新返回给 Index 和 Bluck API
+- 无需 Logstash ，就可以进行数据的预处理，例如为某个字段设置默认值；重命名某个字段的字段名；对字段值进行 Split 操作支持设置 Painless 脚本，对数据进行更加复杂的加工
 
 
 ### Mapping中的字段一旦设定后，禁止直接修改。因为倒排索引生成后不允许直接修改。需要重新建立新的索引，做reindex操作。
@@ -124,9 +118,7 @@ POST /_aliases
 - 对已有字段，一旦已经有数据写入，就不在支持修改字段定义
   Luene 实现的倒排索引，一旦生成后，就不允许修改
 - 如果希望改变字段类型，必须 Reindex API，重建索引
-- 原因
-    如果修改了字段的数据类型，会导致已被索引的属于无法被搜索
-    但是如果是增加新的字段，就不会有这样的影响
+- 原因如果修改了字段的数据类型，会导致已被索引的属于无法被搜索，但是如果是增加新的字段，就不会有这样的影响
 
 # 当 Elasticsearch 自带的分词器无法满足时，可以自定义分词器。通过自组合不同的组件实现
     Character Filter
@@ -193,11 +185,11 @@ Term 查询 / Prefix 前缀查询
 
 ### Multi Match
 - 三种场景
-最佳字段（Best Fields）
+  最佳字段（Best Fields）
     当字段之间相互竞争，又相互关联。例如 title 和 body 这样的字段，评分来自最匹配字段
-多数字段（Most Fields）
+  多数字段（Most Fields）
     处理英文内容时：一种常见的手段是，在主字段（English Analyzer），抽取词干，加入同义词，以匹配更多的文档。相同的文本，加入子字段（Standard Analyzer），以提供更加精确的匹配。其他字段作为匹配文档提高性相关度的信号。匹配字段越多越好
-混合字段（Cross Field）
+  混合字段（Cross Field）
     对于某些实体，例如人名，地址，图书信息。需要在多个字段中确定信息，单个字段只能作为整体的一部分。希望在任何这些列出的字段中尽可能找出多的词
 - 使用多字段匹配解决
 用广度匹配字段 title 包括尽可能多的文档 - 以提高召回率 ，同时又使用字段 title.std 作为信息将相关度更高的文档结至于文档顶部
@@ -290,7 +282,7 @@ POST article/_search
     ]
   }
   每个建议都包含了一个算分，相似性是通过 Levenshtein Edit Distance 的算法实现的。核心思想就是一个词改动多少字段就可以和另外一个词一致。提供了很多可选参数来控制相似性的模糊程度。
-  ```
+```
 
 ###  Phrase Suggester
 Phrase Suggesetr 上增加了一些额外的逻辑
@@ -1593,11 +1585,11 @@ Reindex API支持把文档从一个索引拷贝到另外一个索引
     修改索引的主分片数
     改变字段的 Mapping 中的字段类型
     集群中数据迁移、跨集群的数据迁移
-slices=5:指定划分为多少个片并行执行
-refresh:Index API的refresh只会让接收新数据的碎片被刷新，而reindex的refresh则会刷新所有索引
-wait_for_completion:将参数设置为false则会执行一些预执行检查，启动请求，然后返回一个任务，该任务可以用于任务api来取消或获得任务的状态。Es会在.tasks/task/${taskId}中创建记录ID
-wait_for_active_shards:在Bulk API的情况下，requests_per_second可以设置在继续索引之前，控制多少个碎片的拷贝数必须是活跃的。而timeout 超时控制每个写请求等待不可用的碎片等待的时间
-requests_per_second:每秒的请求数据，显然是节流控制参数，运行设置一个正整数，设置为-1表示不进行控制
+    slices=5:指定划分为多少个片并行执行
+    refresh:Index API的refresh只会让接收新数据的碎片被刷新，而reindex的refresh则会刷新所有索引
+    wait_for_completion:将参数设置为false则会执行一些预执行检查，启动请求，然后返回一个任务，该任务可以用于任务api来取消或获得任务的状态。Es会在.tasks/task/${taskId}中创建记录ID
+    wait_for_active_shards:在Bulk API的情况下，requests_per_second可以设置在继续索引之前，控制多少个碎片的拷贝数必须是活跃的。而timeout 超时控制每个写请求等待不可用的碎片等待的时间
+    requests_per_second:每秒的请求数据，显然是节流控制参数，运行设置一个正整数，设置为-1表示不进行控制
 ```
 POST  _reindex
 {
@@ -1811,7 +1803,7 @@ Painless Script具备以下特性
 - 如不需要检索，排序和聚合分析,Enable设置成false,index设置成false
 - 对需要检索的字段，可以通过如下配置，设置存储粒度
     Index_options/Norms : 不需要归一化数据时，可以关闭
-![](https://cdn.learnku.com/uploads/images/202001/15/29212/SM9UPnmLlV.png)
+    ![](https://cdn.learnku.com/uploads/images/202001/15/29212/SM9UPnmLlV.png)
 
 ### 聚合及排序
 - 如不需要检索，排序和聚合分析,Enable设置成false,Doc_values/fielddata设置成false
@@ -1837,7 +1829,7 @@ Painless Script具备以下特性
 3. 禁止 _source 字段后，还是支持使用 hignlights API ，高亮显示 content 中的匹配的相关信息
 ![](https://cdn.learnku.com/uploads/images/202001/15/29212/WOoEOM12pB.png)
 
---- 
+---
 
 ### 数据建模(一)：如何处理关联关系
 Object:优先考虑反范式设计(Denormailzation)

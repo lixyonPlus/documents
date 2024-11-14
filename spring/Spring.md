@@ -61,7 +61,7 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
  - 2. 根据 Pointcut 定义的匹配规则，判断当前正在实例化的 bean 是否符合规则
  - 3. 如果符合，代理生成器将切面逻辑 Advice 织入 bean 相关方法中，并为目标 bean 生成代理对象
  - 4. 将生成的 bean 的代理对象返回给 BeanFactory 容器，到此，AOP 逻辑执行结束
- 
+
 ### springmvc优化点：每次发起请求时，springmvc没有对请求地址进行缓存
 
 ### AbstractAutoProxyCreator:spring代理对象顶级抽象类
@@ -70,7 +70,7 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 
 ### spring bean生命周期：
   - 实例化bean对象，检查aware相关接口并设置相关依赖，执行BeanPostProcessor前置处理，检查是否有InitializingBean以决定是否调用afterPropertiesSet方法，检查是否有配置初始化方法，BeanPostProcessor后置处理，调用DisposableBean接口执行destroy方法，是否配置有销毁方法。
-  
+
 ### spring 初始化方法执行顺序
   - @PostConStruct->initionBean（atfterProperties）->配置方法（@Bean或xml配置）
 
@@ -101,6 +101,8 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 
 ### SmartInitializingSingleton是所有单例的bean初始化完成之后执行的回调方法。
 
+### SmartLifecycle 在spring容器启动完成后执行
+
 ### @Resource 通过CommonAnnotationBeanPostProcessor处理
 
 ### @Autowired注解原理：
@@ -108,7 +110,7 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
  - 1.Spring容器启动时，AutowiredAnnotationBeanPostProcessor被注册到容器；
  - 2.扫描代码，如果带有@Autowired注解，（扫描当前类中标注@Autowired的属性和方法；再查找父类中注@Autowired的属性和方法，依次遍历；）则将依赖注入信息封装到InjectionMetadata中（见扫描过程）；
  - 3.创建bean时（实例化对象和初始化），会调用各种BeanPostProcessor对bean初始化，AutowiredAnnotationBeanPostProcessor负责将相关的依赖注入进来
- 
+
 ### @Autowired注入对象顺序: 按类型找->通过限定符@Qualifier过滤->@Primary->@Priority->根据名称找（字段名称或者方法名称）
 
 ### @Resource注入对象顺序: 按名称（字段名称、方法名称、set属性名称）找->按类型找->通过限定符@Qualifier过滤
@@ -120,7 +122,7 @@ DefaultListableBeanFactory调用resolveBean(),调用AbstractBeanFactory的doGetB
 ### 当@Bean方法在没有使用@Configuration注解的类中声明时称之为lite @Bean mode，不会被动态代理,否则称为full @Bean mode，会被动态代理
 
 
-### 被CGLIB的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能被声明为private和final，不然在启动时Spring会直接报错。
+### 被CGLIB代理的方法是不能被声明为private和final，因为CGLIB是通过生成子类来实现代理的，private和final方法是不能被子类Override的，也就是说，Full @Configuration模式下，@Bean的方法是不能被声明为private和final，不然在启动时Spring会直接报错。
 
 ### OrderComparator比较器进行排序的时候，若2个对象中有一个对象实现了PriorityOrdered接口，那么这个对象的优先级更高。若2个对象都是PriorityOrdered或Ordered接口的实现类，那么比较Ordered接口的getOrder方法得到order值，值越低，优先级越高。
 

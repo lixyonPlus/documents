@@ -184,7 +184,7 @@
         return "服务熔断";
     }
 
-  ``` 
+```
 
 
   # zuul:
@@ -223,7 +223,8 @@
           path: /rest/**
     ```
 
-    
+
+​    
  # Springcloud-gateway   
 ### gateway三大功能：路由、断言、过滤（对请求前后进行修改拦截。）。
  - 1.客户端向Gateway发送请求，然后在Gateway HandleMapping中找到与请求相匹配的路由，将其转发到WebHandler。
@@ -285,7 +286,7 @@
 
 # Fegin
 
-### feign（声明式HTTP客户端调用）: 以前是Resttemplate+负载均衡方式调用，每个服务都需要编写调用代码，耦合度高。feign集成了ribbon
+### feign（声明式HTTP客户端调用）: 以前是RestTemplate+负载均衡方式调用，每个服务都需要编写调用代码，耦合度高。feign集成了ribbon
     Decoder/Encoder: ResponseEntityDecoder/SpringEncoder
     Logger: slf4jLogger
     Contract: SpringMvcContract

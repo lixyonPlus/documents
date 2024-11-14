@@ -1,7 +1,8 @@
 
 ### 什么是快照读(一致性读)和当前读？
 - 快照读：简单的select操作，属于快照读，不加锁。(当然，也有例外，下面会分析) 利用mvcc解决
- - select * from table where ?;
+  - select * from table where ?;
+
 - 当前读：特殊的读操作，插入/更新/删除操作，属于当前读，需要加锁。
   - select * from table where ? lock in share mode;
   - select * from table where ? for update;
@@ -29,6 +30,20 @@
 
 ## ReadView
 - ReadView中主要就是有个列表来存储我们系统中当前活跃着的事务（未提交的事物）、最小事物id、下一个事物id、创建ReadView的事物id，通过这个列表来判断版本链中记录的版本是否对当前事务可见。
+
+- 有了这个ReadView，这样在访问某条记录时，只需要按照下边的步骤判断记录的某个版本是否可见：
+
+  - 如果被访问版本的trx_id属性值与ReadView中的creator_trx_id值相同，意味着当前事务在访问它自己修改过的记录，所以该版本可以被当前事务访问。
+
+  - 如果被访问版本的trx_id属性值小于ReadView中的min_trx_id值，表明生成该版本的事务在当前事务生成ReadView前已经提交，所以该版本可以被当前事务访问。
+
+  - 如果被访问版本的trx_id属性值大于ReadView中的max_trx_id值，表明生成该版本的事务在当前事务生成ReadView后才开启，所以该版本不可以被当前事务访问。
+
+  - 如果被访问版本的trx_id属性值在ReadView的min_trx_id和max_trx_id之间，那就需要判断一下trx_id属性值是不是在m_ids列表中，如果在，说明创建ReadView时生成该版本的事务还是活跃的，该版本不可以被访问；如果不在，说明创建ReadView时生成该版本的事务已经被提交，该版本可以被访问。
+
+  - 如果某个版本的数据对当前事务不可见的话，那就顺着版本链找到下一个版本的数据，继续按照上边的步骤判断可见性，依此类推，直到版本链中的最后一个版本。如果最后一个版本也不可见的话，那么就意味着该条记录对该事务完全不可见，查询结果就不包含该记录。
+
+
 
 
 ## ReadCommited(读已提交)和RepeatableRead(可重复读)生成readView区别?
