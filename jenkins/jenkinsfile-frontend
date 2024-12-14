@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    environment {
+        // 定义环境变量
+        DOCKER_REGISTRY = "registry.example.com"  // Docker仓库地址
+        IMAGE_NAME = "report-html"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        GITLAB_CRED = 'gitclone'  // Gitlab凭证ID
+        GITLAB_URL = 'http://122.9.15.28:1080/backend/report-frontend.git'
+        KUBE_CONFIG= 'xxxxxxx'
+    }
+
+    parameters{
+        gitParameter(
+            name:"CODE_TAG_BRANCH_NAME",
+            type:"PT_BRANCH_TAG",
+            branchFilter:"origin/(.*)",
+            defaultValue:"main",
+            selectedValue:"DEFAULT",
+            sortMode:"DESCENDING_SMART",
+            useRepository:"${env.GITLAB_URL}",
+            description:"请选择branch或tag"
+        )
+    }
+
+    stages {
+        stage('拉取代码') {
+            steps {
+                checkout([
+                    $class:"GitSCM",
+                    branches:[[name:"${params.CODE_TAG_BRANCH_NAME}"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [[
+                        $class:"RelativeTargetDirectory"
+                    ]],
+                    gitTool: "Default",
+                    submoduleCfg: [],
+                    userRemoteConfigs:[[
+                        credentialsId: "${GITLAB_CRED}",
+                        url: "${GITLAB_URL}"
+                    ]]
+                ])
+            }
+        }
+
+        stage('NPM构建') {
+            tools {
+                nodejs 'nodejs23.3.0'  // 使用Jenkins配置的NodeJS工具
+            }
+            steps {
+                sh '''
+                   node -v
+                   npm config -g set registry https://registry.npmmirror.com
+                   npm install
+                   npm run build test
+                '''
+            }
+        }
+
+        stage('构建Docker镜像') {
+            steps {
+                sh """
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                """
+            }
+        }
+
+        // stage('推送Docker镜像') {
+        //     steps {
+        //         withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USER')]) {
+        //             sh """
+        //                 echo ${DOCKER_PASSWORD} | docker login ${DOCKER_REGISTRY} -u ${DOCKER_USER} --password-stdin
+        //                 docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+        //                 docker logout ${DOCKER_REGISTRY}
+        //             """
+        //         }
+        //     }
+        // }
+
+        stage('部署到Kubernetes') {
+            steps {
+                sh """
+                    sed -i "s|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|" k8s.yaml
+                    kubectl apply -f k8s.yaml
+                    #kubectl --kubeconfig=${KUBE_CONFIG} apply -f k8s.yaml
+                    #kubectl --kubeconfig=${KUBE_CONFIG} set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${DOCKER_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '部署成功!'
+        }
+        failure {
+            echo '部署失败!'
+        }
+    }
+}
