@@ -1,0 +1,29 @@
+package com.data.util;
+
+import com.baomidou.mybatisplus.core.MybatisXMLLanguageDriver;
+import org.apache.ibatis.mapping.BoundSql;
+import org.apache.ibatis.mapping.SqlSource;
+import org.apache.ibatis.session.Configuration;
+
+/**
+* 解析动态sql
+*/
+public class MybatisXMlParserUtil {
+
+    // 创建MyBatis配置对象
+    final static Configuration configuration = new Configuration();
+
+    final static MybatisXMLLanguageDriver mybatisXMLLanguageDriver = new MybatisXMLLanguageDriver();
+
+    public static String parseSql(String sql, Object param) {
+        sql = "<script>" + sql + "</script>";
+
+        SqlSource sqlSource = mybatisXMLLanguageDriver
+                .createSqlSource(configuration, sql, param.getClass());
+
+        // 获取绑定的SQL
+        BoundSql boundSql = sqlSource.getBoundSql(param);
+        // 获取解析后的sql
+        return boundSql.getSql();
+    }
+}
