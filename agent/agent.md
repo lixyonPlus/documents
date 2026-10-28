@@ -1,3 +1,24 @@
+## agent设计规范
+Agent的系统提示定义 ROLE（角色）、BOUNDARIES（边界）、CONTRACT（契约）、OUTPUT FORMAT（输出格式） ；
+
+```
+PROMPT = """你是景点搜索专家。
+
+**工具调用格式:**
+`[TOOL_CALL:amap_maps_text_search:keywords=景点,city=城市名]`
+
+**示例:**
+- `[TOOL_CALL:amap_maps_text_search:keywords=景点,city=北京]`
+- `[TOOL_CALL:amap_maps_text_search:keywords=博物馆,city=上海]`
+
+**重要:**
+- 必须使用工具搜索,不要编造信息
+- 根据用户偏好({preferences})搜索{city}的景点
+"""
+```text
+
+---
+
 ## skills
 一个 Agent Skill 在文件系统上是一个目录（文件夹），其核心是一个必需的 SKILL.md 文件，外加若干个可选的、按用途分类的资源子目录。它本质上是一个“自包含的能力包”或“标准操作程序（SOP）”的物理载体。
 
