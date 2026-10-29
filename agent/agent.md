@@ -76,13 +76,14 @@ skill-name/          # 目录名必须与 SKILL.md 中的 name 字段一致
 ```text
 
 ### 各部分的角色分工明确：
+
 | 路径 | 是否必需 | 说明 |
 |---|---|---|
-| `skill-name/` | 必需（根目录） | 目录名必须与 `SKILL.md` 中的 `name` 字段一致 |
-| `skill-name/SKILL.md` | 必需 | 元数据 + 核心指令 |
-| `skill-name/scripts/` | 可选 | 可执行脚本（如 `.py`、`.sh`） |
-| `skill-name/references/` | 可选 | 按需加载的参考文档 |
-| `skill-name/assets/` | 可选 | 输出时使用的模板、图片等静态资源 |
+| skill-name | 必需（根目录） | 目录名必须与 `SKILL.md` 中的 `name` 字段一致 |
+| skill-name/SKILL.md | 必需 | 元数据 + 核心指令 |
+| skill-name/scripts | 可选 | 可执行脚本（如 `.py`、`.sh`） |
+| skill-name/references | 可选 | 按需加载的参考文档 |
+| skill-name/assets | 可选 | 输出时使用的模板、图片等静态资源 |
 
 ### SKILL.md的内部构成
 SKILL.md 文件由两部分组成：YAML 前置元数据（Frontmatter） 和 Markdown 正文。
