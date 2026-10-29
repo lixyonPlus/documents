@@ -67,14 +67,6 @@ Agent的系统提示定义 ROLE（角色）、BOUNDARIES（边界）、CONTRACT�
 ## skills
 一个 Agent Skill 在文件系统上是一个目录（文件夹），其核心是一个必需的 SKILL.md 文件，外加若干个可选的、按用途分类的资源子目录。它本质上是一个“自包含的能力包”或“标准操作程序（SOP）”的物理载体。
 
-```
-skill-name/          # 目录名必须与 SKILL.md 中的 name 字段一致
-├── SKILL.md         # 【必需】元数据 + 核心指令
-├── scripts/         # 【可选】可执行脚本（如 .py, .sh）
-├── references/      # 【可选】按需加载的参考文档
-└── assets/          # 【可选】输出时使用的模板、图片等静态资源
-```text
-
 ### 各部分的角色分工明确：
 
 | 路径 | 是否必需 | 说明 |
