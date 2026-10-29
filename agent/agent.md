@@ -60,7 +60,7 @@ Agent的系统提示定义 ROLE（角色）、BOUNDARIES（边界）、CONTRACT�
 用户：{{示例输入}}
 助手：{{期望输出，展示格式与边界处理}}
 </example>
-```text
+```
 
 ---
 
