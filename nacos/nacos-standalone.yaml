@@ -1,0 +1,169 @@
+# Nacos 3.2.3: single-node Nacos with embedded storage and persistent disk.
+# Install the nacos-auth Secret first using ./install.sh standalone.
+# Standalone mode is NOT highly available. This is suitable for dev/test or light workloads.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nacos-standalone
+  labels:
+    app.kubernetes.io/part-of: nacos
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos-headless
+  namespace: nacos-standalone
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: http
+    - name: grpc-client
+      port: 9848
+      targetPort: grpc-client
+    - name: console
+      port: 8080
+      targetPort: console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  namespace: nacos-standalone
+spec:
+  type: ClusterIP
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: http
+    - name: grpc-client
+      port: 9848
+      targetPort: grpc-client
+    - name: console
+      port: 8080
+      targetPort: console
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nacos
+  namespace: nacos-standalone
+  labels:
+    app: nacos
+spec:
+  serviceName: nacos-headless
+  replicas: 1
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+        app.kubernetes.io/name: nacos
+    spec:
+      terminationGracePeriodSeconds: 90
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:v3.2.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8848
+            - name: grpc-client
+              containerPort: 9848
+            - name: console
+              containerPort: 8080
+          env:
+            - name: MODE
+              value: "standalone"
+            - name: NACOS_SERVER_PORT
+              value: "8848"
+            - name: NACOS_APPLICATION_PORT
+              value: "8848"
+            - name: NACOS_AUTH_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_ADMIN_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_CONSOLE_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: token
+            - name: NACOS_AUTH_IDENTITY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: identity-key
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: identity-value
+            - name: JVM_XMS
+              value: "512m"
+            - name: JVM_XMX
+              value: "1g"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "3Gi"
+          startupProbe:
+            httpGet:
+              path: /v3/console/health/readiness
+              port: console
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /v3/console/health/liveness
+              port: console
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /v3/console/health/readiness
+              port: console
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /home/nacos/data
+              subPath: data
+            - name: data
+              mountPath: /home/nacos/logs
+              subPath: logs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # For ACK, verify this class with: kubectl get storageclass
+        storageClassName: alicloud-disk-essd
+        resources:
+          requests:
+            storage: 10Gi
