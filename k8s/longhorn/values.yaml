@@ -1,0 +1,21 @@
+# Longhorn V1 - 3 physical storage nodes - reference Helm values
+# Use a version-compatible chart (see README.md); do not blindly upgrade.
+# Nodes must have a dedicated filesystem mounted at /var/lib/longhorn BEFORE installation.
+# Labels: node.longhorn.io/create-default-disk=true on only the 3 designated nodes.
+
+persistence:
+  defaultClass: false  # Do not replace an existing cluster default StorageClass
+
+defaultSettings:
+  createDefaultDiskLabeledNodes: true
+  defaultDataPath: /var/lib/longhorn/
+  defaultReplicaCount: 3
+  replicaSoftAntiAffinity: false
+  replicaAutoBalance: disabled
+  storageOverProvisioningPercentage: 100
+  storageMinimalAvailablePercentage: 25
+  storageReservedPercentageForDefaultDisk: 15
+  defaultDataLocality: disabled
+
+# For low-maintenance operation: keep the default V1 engine only.
+# Do not enable the V2 engine unless its platform prerequisites and workload needs are verified.
