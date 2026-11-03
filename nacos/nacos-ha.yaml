@@ -1,0 +1,268 @@
+# Nacos 3.2.3: three-node HA cluster for Kubernetes / Alibaba Cloud ACK.
+# Prerequisites: 3 schedulable nodes, a working StorageClass, and an external HA MySQL.
+# Before applying, replace CHANGE_ME_MYSQL_HOST and configure nacos-auth/nacos-mysql Secrets.
+# Secrets can be created safely with ./install.sh ha.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nacos
+  labels:
+    app.kubernetes.io/part-of: nacos
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nacos-config
+  namespace: nacos
+data:
+  MYSQL_SERVICE_HOST: "CHANGE_ME_MYSQL_HOST"
+  MYSQL_SERVICE_PORT: "3306"
+  MYSQL_SERVICE_DB_NAME: "nacos"
+  MYSQL_SERVICE_USER: "nacos_app"
+  MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true"
+  # Fixed 3-node membership. Keep synchronized with spec.replicas;
+  # this manifest deliberately does not depend on the peer-finder plugin or Kubernetes API RBAC.
+  NACOS_SERVERS: "nacos-0.nacos-headless.nacos.svc.cluster.local:8848 nacos-1.nacos-headless.nacos.svc.cluster.local:8848 nacos-2.nacos-headless.nacos.svc.cluster.local:8848"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos-headless
+  namespace: nacos
+  labels:
+    app: nacos
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: http
+    - name: grpc-client
+      port: 9848
+      targetPort: grpc-client
+    - name: grpc-cluster
+      port: 9849
+      targetPort: grpc-cluster
+    - name: console
+      port: 8080
+      targetPort: console
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  namespace: nacos
+  labels:
+    app: nacos
+spec:
+  type: ClusterIP
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: http
+    - name: grpc-client
+      port: 9848
+      targetPort: grpc-client
+    - name: console
+      port: 8080
+      targetPort: console
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nacos-pdb
+  namespace: nacos
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: nacos
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nacos
+  namespace: nacos
+  labels:
+    app: nacos
+spec:
+  serviceName: nacos-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+        app.kubernetes.io/name: nacos
+        app.kubernetes.io/component: server
+    spec:
+      terminationGracePeriodSeconds: 120
+      # One replica per Kubernetes node; at least 3 eligible worker nodes are required.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: nacos
+              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: nacos
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:v3.2.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8848
+              protocol: TCP
+            - name: grpc-client
+              containerPort: 9848
+              protocol: TCP
+            - name: grpc-cluster
+              containerPort: 9849
+              protocol: TCP
+            - name: console
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: MODE
+              value: "cluster"
+            - name: NACOS_SERVER_PORT
+              value: "8848"
+            - name: NACOS_APPLICATION_PORT
+              value: "8848"
+            - name: PREFER_HOST_MODE
+              value: "hostname"
+            - name: NACOS_REPLICAS
+              value: "3"
+            - name: NACOS_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: NACOS_SERVERS
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: "mysql"
+            - name: MYSQL_SERVICE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: MYSQL_SERVICE_HOST
+            - name: MYSQL_SERVICE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: MYSQL_SERVICE_PORT
+            - name: MYSQL_SERVICE_DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: MYSQL_SERVICE_DB_NAME
+            - name: MYSQL_SERVICE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: MYSQL_SERVICE_USER
+            - name: MYSQL_SERVICE_DB_PARAM
+              valueFrom:
+                configMapKeyRef:
+                  name: nacos-config
+                  key: MYSQL_SERVICE_DB_PARAM
+            - name: MYSQL_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-mysql
+                  key: password
+            - name: NACOS_AUTH_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_ADMIN_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_CONSOLE_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: token
+            - name: NACOS_AUTH_IDENTITY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: identity-key
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-auth
+                  key: identity-value
+            - name: JVM_XMS
+              value: "1g"
+            - name: JVM_XMX
+              value: "2g"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          startupProbe:
+            httpGet:
+              path: /v3/console/health/readiness
+              port: console
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /v3/console/health/liveness
+              port: console
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /v3/console/health/readiness
+              port: console
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /home/nacos/data
+              subPath: data
+            - name: data
+              mountPath: /home/nacos/logs
+              subPath: logs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # For ACK, verify this class with: kubectl get storageclass
+        storageClassName: alicloud-disk-essd
+        resources:
+          requests:
+            storage: 20Gi
